@@ -75,7 +75,6 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 	if (img_x < 0) x_offset = -img_x;
 	if (img_y < 0) y_offset = -img_y;
 
-//#pragma omp parallel for
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
 			int img_sample_x = x + x_offset;
