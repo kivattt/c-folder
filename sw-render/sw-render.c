@@ -77,11 +77,13 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
+			// Fetch the pixel from img
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			int img_index = img_sample_y * img_width + img_sample_x;
 			uint32_t img_color = fade_opacity_to_black(abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
 
+			// Set the pixel
 			int buffer_index = (visible.y+y) * buffer_width + (visible.x+x);
 			buffer[buffer_index] = img_color;
 		}
