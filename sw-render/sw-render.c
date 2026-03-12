@@ -68,17 +68,8 @@ uint32_t fade_opacity_to_black(uint32_t argb) {
 // Draws img to the buffer at position img_x, img_y
 // This outputs in ARGB format.
 void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
-	struct Rect buffer_rect;
-	buffer_rect.x = 0;
-	buffer_rect.y = 0;
-	buffer_rect.w = buffer_width;
-	buffer_rect.h = buffer_height;
-
-	struct Rect img_rect;
-	img_rect.x = img_x;
-	img_rect.y = img_y;
-	img_rect.w = img_width;
-	img_rect.h = img_height;
+	struct Rect buffer_rect = {.x = 0, .y = 0, .w = buffer_width, .h = buffer_height};
+	struct Rect img_rect = {.x = img_x, .y = img_y, .w = img_width, .h = img_height};
 
 	struct Rect visible = rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
