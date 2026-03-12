@@ -65,15 +65,15 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
 
+	int x_offset = 0, y_offset = 0;
+	if (img_x < 0) x_offset = -img_x;
+	if (img_y < 0) y_offset = -img_y;
+
 	struct Rect visible = rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
 	assert(visible.y >= 0);
 	assert(visible.w >= 0);
 	assert(visible.h >= 0);
-
-	int x_offset = 0, y_offset = 0;
-	if (img_x < 0) x_offset = -img_x;
-	if (img_y < 0) y_offset = -img_y;
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
