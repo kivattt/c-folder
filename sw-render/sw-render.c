@@ -67,7 +67,7 @@ uint32_t fade_opacity_to_black(uint32_t argb) {
 
 // Draws img to the buffer at position img_x, img_y
 // This outputs in ARGB format.
-void draw_image_abgr(uint32_t* buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
+void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect;
 	buffer_rect.x = 0;
 	buffer_rect.y = 0;
@@ -96,11 +96,16 @@ void draw_image_abgr(uint32_t* buffer, int buffer_width, int buffer_height, uint
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			int img_index = img_sample_y * img_width + img_sample_x;
-			//uint32_t img_color = fade_opacity_to_black(abgr_to_argb(img[img_index]));
-			uint32_t img_color = abgr_to_argb(img[img_index]); // Slow memory fetch
+			uint32_t img_color = fade_opacity_to_black(abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
 
 			int buffer_index = (visible.y+y) * buffer_width + (visible.x+x);
 			buffer[buffer_index] = img_color;
 		}
 	}
 }
+
+// TODO:
+// Make a font texture atlas generator tool with SFML (which uses freetype)
+/*void draw_text(uint32_t *buffer, int buffer_width, int buffer_height, char *text, int font_size, uint32_t color_argb) {
+	
+}*/
