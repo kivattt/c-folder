@@ -26,15 +26,9 @@ struct Rect rect_intersect(struct Rect a, struct Rect b) {
 
 	struct Rect out;
 	if (x2 >= x1 && y2 >= y1) {
-		out.x = x1;
-		out.y = y1;
-		out.w = x2 - x1;
-		out.h = y2 - y1;
+		out = (struct Rect){.x = x1, .y = y1, .w = x2-x1, .h = y2-y1};
 	} else {
-		out.x = 0;
-		out.y = 0;
-		out.w = 0;
-		out.h = 0;
+		out = (struct Rect){.x = 0, .y = 0, .w = 0, .h = 0};
 	}
 
 	return out;
@@ -68,8 +62,8 @@ uint32_t fade_opacity_to_black(uint32_t argb) {
 // Draws img to the buffer at position img_x, img_y
 // This outputs in ARGB format.
 void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0, .y = 0, .w = buffer_width, .h = buffer_height};
-	struct Rect img_rect = {.x = img_x, .y = img_y, .w = img_width, .h = img_height};
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
 
 	struct Rect visible = rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
