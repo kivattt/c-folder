@@ -59,8 +59,8 @@ uint32_t fade_opacity_to_black(uint32_t argb) {
 	return 0xFF000000 | r << 16 | g << 8 | b;
 }
 
-// Draws img to the buffer at position img_x, img_y
-// This outputs in ARGB format.
+// Draws an ABGR img to the buffer at position img_x, img_y
+// Outputs in ARGB format.
 void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
