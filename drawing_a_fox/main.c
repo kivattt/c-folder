@@ -45,8 +45,8 @@ void handle_input(GLFWwindow *window, int key, int scancode, int action, int mod
 }
 
 int main() {
-	int width = 3840;
-	int height = 2560;
+	int width = 1280;
+	int height = 720;
 	assert(glfwInit());
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -55,13 +55,13 @@ int main() {
 	GLFWwindow* window = glfwCreateWindow(width, height, "GLFW+Vulkan for software rendering", NULL, NULL);
 
 	int guyWidth, guyHeight, guyChannels;
-	unsigned char *guyImage = stbi_load("large.png", &guyWidth, &guyHeight, &guyChannels, 4);
+	unsigned char *guyImage = stbi_load("fox.png", &guyWidth, &guyHeight, &guyChannels, 4);
 	printf("guy channels: %i\n", guyChannels);
 
 	int bufferWidth = width;
 	int bufferHeight = height;
-	void* image = malloc(4 * bufferWidth * bufferHeight);
-	assert(image);
+	void* buffer = malloc(4 * bufferWidth * bufferHeight);
+	assert(buffer);
 
 	assert(cvk_init(window));
 
@@ -76,11 +76,12 @@ int main() {
 		if (key_d) x += speed;
 		usleep(7000); // 7 ms
 
-		memset(image, 0, 4 * bufferWidth * bufferHeight);
+		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 
-		draw_image_abgr(image, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
+		draw_image_abgr(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
+		//draw_text(buffer, bufferWidth, bufferHeight, "hello, world!", 24, 0xFFFFFFFF);
 
-		cvk_draw(window, image, width, height);
+		cvk_draw(window, buffer, width, height);
 	}
 
 	cvk_cleanup();
