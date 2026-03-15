@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <immintrin.h>
+#include <string.h>
 
 #ifdef __clang__
 	#define ROTR(a, b) __builtin_rotateright32((a), (b))
@@ -87,6 +88,38 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 			int buffer_index = (visible.y+y) * buffer_width + (visible.x+x);
 			buffer[buffer_index] = img_color;
 		}
+	}
+}
+
+// Converts an image from ABGR to ARGB in-place
+// Fades opacity to black
+void convert_image_abgr_to_argb(uint32_t *img, int length) {
+	for (int i = 0; i < length; i++) {
+		img[i] = fade_opacity_to_black(abgr_to_argb(img[i]));
+	}
+}
+
+void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
+
+	int x_offset = 0, y_offset = 0;
+	if (img_x < 0) x_offset = -img_x;
+	if (img_y < 0) y_offset = -img_y;
+
+	struct Rect visible = rect_intersect(buffer_rect, img_rect);
+	assert(visible.x >= 0);
+	assert(visible.y >= 0);
+	assert(visible.w >= 0);
+	assert(visible.h >= 0);
+
+	for (int y = 0; y < visible.h; y++) {
+		int img_sample_x = x_offset;
+		int img_sample_y = y + y_offset;
+		int img_index = img_sample_y * img_width + img_sample_x;
+
+		int buffer_index = (visible.y+y) * buffer_width + (visible.x);
+		memcpy(buffer+buffer_index, img+img_index, visible.w * 4);
 	}
 }
 

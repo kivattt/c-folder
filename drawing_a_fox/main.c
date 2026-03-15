@@ -58,6 +58,8 @@ int main() {
 	unsigned char *guyImage = stbi_load("fox.png", &guyWidth, &guyHeight, &guyChannels, 4);
 	printf("guy channels: %i\n", guyChannels);
 
+	convert_image_abgr_to_argb((uint32_t*)guyImage, guyWidth*guyHeight);
+
 	int bufferWidth = width;
 	int bufferHeight = height;
 	void* buffer = malloc(4 * bufferWidth * bufferHeight);
@@ -78,7 +80,8 @@ int main() {
 
 		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 
-		draw_image_abgr(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
+		//draw_image_abgr(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
+		draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
 		//draw_text(buffer, bufferWidth, bufferHeight, "hello, world!", 24, 0xFFFFFFFF);
 
 		cvk_draw(window, buffer, width, height);
