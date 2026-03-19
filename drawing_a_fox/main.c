@@ -6,7 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "cvulkan.h"
+#include "../cvulkan/cvulkan.h"
 #include "../sw-render/sw-render.h"
 
 #define STB_IMAGE_IMPLEMENTATION
