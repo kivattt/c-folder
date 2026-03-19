@@ -99,6 +99,18 @@ void convert_image_abgr_to_argb(uint32_t *img, int length) {
 	}
 }
 
+// Converts a single-channel 8-bit alpha image to ARGB
+// This function allocates and returns a new image. Remember to free it!
+uint32_t *convert_image_a_to_argb(uint8_t* img, int length) {
+	uint32_t *output = (uint32_t*)malloc(4 * length);
+
+	for (int i = 0; i < length; i++) {
+		output[i] = fade_opacity_to_black(img[i] << 24 | 0x00FFFFFF);
+	}
+
+	return output;
+}
+
 void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
