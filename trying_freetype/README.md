@@ -10,3 +10,8 @@ make
 
 # Binaries are now in the bin/ folder under ft2demos
 ```
+
+```
+./compile.sh
+VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json ./main
+```

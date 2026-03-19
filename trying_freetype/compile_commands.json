@@ -1,0 +1,59 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-O3",
+      "-g",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "main",
+      "main.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/trying_freetype",
+    "file": "/home/kivah/main/projects/c-folder/trying_freetype/main.c",
+    "output": "/home/kivah/main/projects/c-folder/trying_freetype/main"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-O3",
+      "-g",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "main",
+      "../cvulkan/cvulkan.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/trying_freetype",
+    "file": "/home/kivah/main/projects/c-folder/cvulkan/cvulkan.c",
+    "output": "/home/kivah/main/projects/c-folder/trying_freetype/main"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-O3",
+      "-g",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "main",
+      "../sw-render/sw-render.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/trying_freetype",
+    "file": "/home/kivah/main/projects/c-folder/sw-render/sw-render.c",
+    "output": "/home/kivah/main/projects/c-folder/trying_freetype/main"
+  }
+]
