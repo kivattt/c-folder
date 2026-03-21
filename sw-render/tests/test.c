@@ -4,6 +4,18 @@
 
 #include "../sw-render.h"
 
+void print_gray(const char *s) {
+	printf("\x1b[1;30m%s\x1b[0m", s);
+}
+
+void print_red(const char *s) {
+	printf("\x1b[31m%s\x1b[0m", s);
+}
+
+void print_green(const char *s) {
+	printf("\x1b[32m%s\x1b[0m", s);
+}
+
 struct TestCaseRectIntersect {
 	struct Rect a;
 	struct Rect b;
@@ -62,6 +74,8 @@ int test_rect_intersect() {
 	for (int i = 0; i < NUM_INTERSECT_TESTS; i++) {
 		struct Rect result = rect_intersect(tests[i].a, tests[i].b);
 		if (memcmp(&result, &tests[i].expected, sizeof(struct Rect)) != 0) {
+			print_red(" Failed\n");
+
 			printf("Test at index %i failed!\n\n", i);
 
 			printf("Expected:\n");
@@ -72,16 +86,26 @@ int test_rect_intersect() {
 		}
 	}
 
+	print_green(" Success\n");
 	return 0;
 }
 
 int main() {
-	int rect_intersect_result = test_rect_intersect();
-	if (rect_intersect_result != 0) {
-		printf("FAIL\n");
+	int result;
+	int failed = 0;
+
+	print_gray("test_rect_intersect():");
+	result = test_rect_intersect();
+	if (result != 0) {
+		failed = 1;
+	}
+
+	printf("\n");
+	if (failed) {
+		print_red("FAIL\n");
 		return 1;
 	} else {
-		printf("PASS\n");
+		print_green("PASS\n");
 		return 0;
 	}
 }
