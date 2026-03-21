@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "sw-render.h"
+#include "../sw-render.h"
 
 struct TestCaseRectIntersect {
 	struct Rect a;
@@ -77,5 +77,11 @@ int test_rect_intersect() {
 
 int main() {
 	int rect_intersect_result = test_rect_intersect();
-	if (!rect_intersect_result) return 1;
+	if (rect_intersect_result != 0) {
+		printf("FAIL\n");
+		return 1;
+	} else {
+		printf("PASS\n");
+		return 0;
+	}
 }
