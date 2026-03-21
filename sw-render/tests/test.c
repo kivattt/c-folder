@@ -74,6 +74,16 @@ int test_rect_intersect() {
 }
 
 int test_abgr_to_argb() {
+	uint32_t input =    0xFFAABBCC;
+	uint32_t expected = 0xFFCCBBAA;
+	uint32_t result = abgr_to_argb(input);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %x\n", expected);
+		printf("But got : %x\n", result);
+		return 1;
+	}
 
 	print_green(" Success\n");
 	return 0;
