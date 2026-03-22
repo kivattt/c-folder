@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "../renamethis.h"
+#include "../fontbmp.h"
 
 int main() {
 	struct FontBitmaps font_bitmaps = initialize_font_bitmaps();
 
-	FT_Error err = generate_font_atlas(&font_bitmaps, "Inter-Regular.ttf", 40);
+	FT_Error err = generate_font_bitmaps(&font_bitmaps, "Inter-Regular.ttf", 40);
 	if (err) printf("err: %i\n", err);
 
 	for (int c = 0; c <= 255; c++) {
