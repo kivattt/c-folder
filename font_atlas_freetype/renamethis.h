@@ -17,9 +17,4 @@ struct FontBitmaps {
 
 struct FontBitmaps initialize_font_bitmaps();
 void deinitialize_font_bitmaps(struct FontBitmaps font_bitmaps);
-
-//FT_Error generate_font_atlas(const char *font_filename, const int font_height_pixels);
-//FT_Error generate_font_atlas(struct GlyphBitmap **out_glyph_bitmap_list, uint8_t **out_bitmap_data, const char *font_filename, const int font_height_pixels);
-//FT_Error generate_font_atlas(struct GlyphBitmap *out_glyph_bitmap_list, uint8_t **out_bitmap_data, const char *font_filename, const int font_height_pixels);
-//FT_Error generate_font_atlas(struct FontBitmaps font_bitmaps, const char *font_filename, const int font_height_pixels);
 FT_Error generate_font_atlas(struct FontBitmaps *font_bitmaps, const char *font_filename, const int font_height_pixels);
