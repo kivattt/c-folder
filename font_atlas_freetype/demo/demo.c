@@ -4,19 +4,19 @@
 #include "../renamethis.h"
 
 int main() {
-	struct GlyphBitmap *glyph_bitmap_list;
-	uint8_t *bitmap_data;
+	struct FontBitmaps font_bitmaps = initialize_font_bitmaps();
 
-	FT_Error err = generate_font_atlas(&glyph_bitmap_list, &bitmap_data, "Inter-Regular.ttf", 40);
+	FT_Error err = generate_font_atlas(&font_bitmaps, "Inter-Regular.ttf", 40);
 	if (err) printf("err: %i\n", err);
 
-	struct GlyphBitmap glyph = glyph_bitmap_list['f'];
-	printf("width: %i, height: %i, data: %p\n", glyph.width, glyph.height, glyph.data);
+	for (int c = 0; c <= 255; c++) {
+		struct GlyphBitmap glyph = font_bitmaps.glyph_list[c];
+		printf("Char %c, index %i, width: %i, height: %i, data: %p\n", (char)c, c, glyph.width, glyph.height, glyph.data);
+	}
 
 	// Output the bitmap data
 	//write(1, glyph.data, glyph.width*glyph.height);
 
-	free(glyph_bitmap_list);
-	free(bitmap_data);
+	deinitialize_font_bitmaps(font_bitmaps);
 	return 0;
 }
