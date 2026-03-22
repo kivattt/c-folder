@@ -1,0 +1,40 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-O3",
+      "-g",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "demo",
+      "demo.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo",
+    "file": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo.c",
+    "output": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-O3",
+      "-g",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "demo",
+      "../renamethis.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo",
+    "file": "/home/kivah/main/projects/c-folder/font_atlas_freetype/renamethis.c",
+    "output": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo"
+  }
+]
