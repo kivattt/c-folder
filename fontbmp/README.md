@@ -28,6 +28,9 @@ if (err) { /* ... */ }
 
 for (int c = 0; c <= 255; c++) {
     struct GlyphBitmap glyph = font_bitmaps.glyph_list[c];
+
+    if (glyph.data == NULL) continue;
+
     printf("Char %c, index %i, width: %i, height: %i, data: %p\n", (char)c, c, glyph.width, glyph.height, glyph.data);
 }
 
