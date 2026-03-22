@@ -4,6 +4,8 @@
 #include <immintrin.h>
 #include <string.h>
 
+#include "sw-render.h"
+
 #ifdef __clang__
 	#define ROTR(a, b) __builtin_rotateright32((a), (b))
 #else
@@ -12,10 +14,6 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-struct Rect {
-	int32_t x, y, w, h;
-};
 
 // Returns the intersection of two rectangles.
 // If there is no intersection, it returns an empty rectangle with x=0, y=0, w=0, h=0
