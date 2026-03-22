@@ -1,3 +1,21 @@
+## fontbmp
+
+This library creates an array of bitmap data that contains the characters 0 through 255 from a font file. \
+Intended to be used for software rendering text.
+
+You can re-run `generate_font_bitmaps` with a different font-size to change the font size of all the bitmaps.
+
+This library uses freetype to render the glyphs.
+
+It contains only 3 functions:
+```
+initialize_font_bitmaps
+deinitialize_font_bitmaps
+generate_font_bitmaps
+```
+
+See [fontbmp.h](fontbmp.h) for detailed definitions
+
 ## Usage
 
 ```c
@@ -17,6 +35,10 @@ deinitialize_font_bitmaps(font_bitmaps);
 ```
 
 See [demo/demo.c](demo/demo.c) for a full example
+
+## Known issues
+
+- The `font_height_pixels` parameter in `generate_font_bitmaps` doesn't actually let you choose the pixel height, it can go above or below.
 
 ## Build and run the demo
 

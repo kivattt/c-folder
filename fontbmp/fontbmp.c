@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include FT_FREETYPE_H
 
-#include "renamethis.h"
+#include "fontbmp.h"
 
 struct FontBitmaps initialize_font_bitmaps() {
 	struct FontBitmaps out;
@@ -20,7 +20,7 @@ void deinitialize_font_bitmaps(struct FontBitmaps font_bitmaps) {
 
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error generate_font_atlas(struct FontBitmaps *font_bitmaps, const char *font_filename, const int font_height_pixels) {
+FT_Error generate_font_bitmaps(struct FontBitmaps *font_bitmaps, const char *font_filename, const int font_height_pixels) {
 	FT_Library library;
 	FT_Error error;
 	FT_Face face;
