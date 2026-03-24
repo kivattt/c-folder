@@ -1,8 +1,4 @@
 //#undef NDEBUG
-#include <assert.h>
-#include <stdint.h>
-#include <immintrin.h>
-#include <string.h>
 
 #include "sw-render.h"
 
@@ -133,8 +129,53 @@ void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint
 	}
 }
 
-// TODO:
-// Make a font texture atlas generator tool with SFML (which uses freetype)
-/*void draw_text(uint32_t *buffer, int buffer_width, int buffer_height, char *text, int font_size, uint32_t color_argb) {
-	
-}*/
+// Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
+void draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap image, uint32_t color, int img_x, int img_y) {
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,  .h = dest_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = image.width, .h = image.rows};
+
+	int x_offset = 0, y_offset = 0;
+	if (img_x < 0) x_offset = -img_x;
+	if (img_y < 0) y_offset = -img_y;
+
+	struct Rect visible = rect_intersect(buffer_rect, img_rect);
+	assert(visible.x >= 0);
+	assert(visible.y >= 0);
+	assert(visible.w >= 0);
+	assert(visible.h >= 0);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			// Fetch the pixel from img
+			int img_sample_x = x + x_offset;
+			int img_sample_y = y + y_offset;
+			assert(image.pitch == image.width);
+			int img_index = img_sample_y * image.pitch + img_sample_x;
+
+			// TODO: Alpha blending
+			uint32_t img_color = fade_opacity_to_black(image.data[img_index] << 24 | color); // Slow memory fetch bottleneck
+
+			// Set the pixel
+			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
+			dest[buffer_index] = img_color;
+		}
+	}
+}
+
+void draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
+	int cursor_x = 0;
+	for (int i = 0; i < strlen(text); i++) {
+		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
+
+		struct GlyphBitmap bitmap = font_bitmaps->glyph_list[c];
+		if (bitmap.data == NULL) {
+			continue;
+		}
+
+		int x_pos = x + cursor_x;
+		int y_pos = y;
+		draw_glyph(dest, dest_width, dest_height, bitmap, 0x00FFFFFF, x_pos, y_pos);
+
+		cursor_x += bitmap.width;
+	}
+}

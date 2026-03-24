@@ -8,6 +8,7 @@
 
 #include "../cvulkan/cvulkan.h"
 #include "../sw-render/sw-render.h"
+#include "../fontbmp/fontbmp.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -69,7 +70,35 @@ int main() {
 
 	glfwSetKeyCallback(window, handle_input);
 
+	struct FontBitmaps font = fontbmp_initialize();
+
+	int font_size = 40;
+	FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", font_size);
+	if (err) {
+		printf("Error loading font: %i\n", err);
+		return 1;
+	}
+
+	//char thing[256];
+	char *thing = malloc(255);
+	for (int i = 1; i < 256; i++) {
+		thing[i-1] = i;
+	}
+
+	int i = 0;
 	while (!glfwWindowShouldClose(window) && running) {
+		++i;
+		if (1 && (i % 4 == 0)) {
+			font_size += 1;
+			//printf("gen...\n");
+			//FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", font_size);
+			FT_Error err = fontbmp_generate(&font, "JetBrainsMono-Regular.ttf", font_size);
+			if (err) {
+				printf("Error loading font: %i\n", err);
+				return 1;
+			}
+		}
+
 		glfwPollEvents();
 		int speed = 9;
 		if (key_w) y -= speed;
@@ -78,11 +107,11 @@ int main() {
 		if (key_d) x += speed;
 		usleep(7000); // 7 ms
 
+		// Clear the screen
 		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 
-		//draw_image_abgr(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
-		draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x ,y);
-		//draw_text(buffer, bufferWidth, bufferHeight, "hello, world!", 24, 0xFFFFFFFF);
+		draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
+		draw_text(buffer, bufferWidth, bufferHeight, "it works now!! :D", &font, 200, 200);
 
 		cvk_draw(window, buffer, width, height);
 	}
@@ -92,6 +121,8 @@ int main() {
 	glfwTerminate();
 
 	stbi_image_free(guyImage);
+
+	fontbmp_deinitialize(font);
 
 	return 0;
 }
