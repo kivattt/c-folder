@@ -55,7 +55,7 @@ int test_rect_intersect() {
 	};
 
 	for (int i = 0; i < NUM_INTERSECT_TESTS; i++) {
-		struct Rect result = rect_intersect(tests[i].a, tests[i].b);
+		struct Rect result = swr_rect_intersect(tests[i].a, tests[i].b);
 		if (memcmp(&result, &tests[i].expected, sizeof(struct Rect)) != 0) {
 			print_red(" Failed\n");
 
@@ -76,7 +76,7 @@ int test_rect_intersect() {
 int test_abgr_to_argb() {
 	uint32_t input =    0xFFAABBCC;
 	uint32_t expected = 0xFFCCBBAA;
-	uint32_t result = abgr_to_argb(input);
+	uint32_t result = swr_abgr_to_argb(input);
 	if (result != expected) {
 		print_red(" Failed\n");
 

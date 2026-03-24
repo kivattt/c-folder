@@ -13,7 +13,7 @@
 
 // Returns the intersection of two rectangles.
 // If there is no intersection, it returns an empty rectangle with x=0, y=0, w=0, h=0
-struct Rect rect_intersect(struct Rect a, struct Rect b) {
+struct Rect swr_rect_intersect(struct Rect a, struct Rect b) {
 	int32_t x1 = MAX(a.x, b.x);
 	int32_t x2 = MIN(a.x + a.w, b.x + b.w);
 	int32_t y1 = MAX(a.y, b.y);
@@ -29,11 +29,11 @@ struct Rect rect_intersect(struct Rect a, struct Rect b) {
 	return out;
 }
 
-uint32_t abgr_to_argb(uint32_t abgr) {
+uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return ROTR(__builtin_bswap32(abgr), 8);
 }
 
-uint32_t fade_opacity_to_black(uint32_t argb) {
+uint32_t swr_fade_opacity_to_black(uint32_t argb) {
 	uint8_t alpha = argb >> 24; // 0 to 255
 	uint16_t r = (argb >> 16) & 0xff;
 	uint16_t g = (argb >> 8) & 0xff;
@@ -56,7 +56,7 @@ uint32_t fade_opacity_to_black(uint32_t argb) {
 
 // Draws an ABGR img to the buffer at position img_x, img_y
 // Outputs in ARGB format.
-void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
+void swr_draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t* img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
 
@@ -64,7 +64,7 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 	if (img_x < 0) x_offset = -img_x;
 	if (img_y < 0) y_offset = -img_y;
 
-	struct Rect visible = rect_intersect(buffer_rect, img_rect);
+	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
 	assert(visible.y >= 0);
 	assert(visible.w >= 0);
@@ -76,7 +76,7 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			int img_index = img_sample_y * img_width + img_sample_x;
-			uint32_t img_color = fade_opacity_to_black(abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
+			uint32_t img_color = swr_fade_opacity_to_black(swr_abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
 
 			// Set the pixel
 			int buffer_index = (visible.y+y) * buffer_width + (visible.x+x);
@@ -87,25 +87,25 @@ void draw_image_abgr(uint32_t *buffer, int buffer_width, int buffer_height, uint
 
 // Converts an image from ABGR to ARGB in-place
 // Fades opacity to black
-void convert_image_abgr_to_argb(uint32_t *img, int length) {
+void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	for (int i = 0; i < length; i++) {
-		img[i] = fade_opacity_to_black(abgr_to_argb(img[i]));
+		img[i] = swr_fade_opacity_to_black(swr_abgr_to_argb(img[i]));
 	}
 }
 
 // Converts a single-channel 8-bit alpha image to ARGB
 // This function allocates and returns a new image. Remember to free it!
-uint32_t *convert_image_a_to_argb(uint8_t* img, int length) {
+uint32_t *swr_convert_image_a_to_argb(uint8_t* img, int length) {
 	uint32_t *output = (uint32_t*)malloc(4 * length);
 
 	for (int i = 0; i < length; i++) {
-		output[i] = fade_opacity_to_black(img[i] << 24 | 0x00FFFFFF);
+		output[i] = swr_fade_opacity_to_black(img[i] << 24 | 0x00FFFFFF);
 	}
 
 	return output;
 }
 
-void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
+void swr_draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = buffer_width, .h = buffer_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
 
@@ -113,7 +113,7 @@ void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint
 	if (img_x < 0) x_offset = -img_x;
 	if (img_y < 0) y_offset = -img_y;
 
-	struct Rect visible = rect_intersect(buffer_rect, img_rect);
+	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
 	assert(visible.y >= 0);
 	assert(visible.w >= 0);
@@ -130,7 +130,7 @@ void draw_image_argb(uint32_t *buffer, int buffer_width, int buffer_height, uint
 }
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
-void draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap image, uint32_t color, int img_x, int img_y) {
+void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap image, uint32_t color, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,  .h = dest_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = image.width, .h = image.rows};
 
@@ -138,7 +138,7 @@ void draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBit
 	if (img_x < 0) x_offset = -img_x;
 	if (img_y < 0) y_offset = -img_y;
 
-	struct Rect visible = rect_intersect(buffer_rect, img_rect);
+	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
 	assert(visible.x >= 0);
 	assert(visible.y >= 0);
 	assert(visible.w >= 0);
@@ -153,7 +153,7 @@ void draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBit
 			int img_index = img_sample_y * image.pitch + img_sample_x;
 
 			// TODO: Alpha blending
-			uint32_t img_color = fade_opacity_to_black(image.data[img_index] << 24 | color); // Slow memory fetch bottleneck
+			uint32_t img_color = swr_fade_opacity_to_black(image.data[img_index] << 24 | color); // Slow memory fetch bottleneck
 
 			// Set the pixel
 			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
@@ -162,7 +162,7 @@ void draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBit
 	}
 }
 
-void draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
+void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
 	int cursor_x = 0;
 	for (int i = 0; i < strlen(text); i++) {
 		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
@@ -174,7 +174,7 @@ void draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text
 
 		int x_pos = x + cursor_x;
 		int y_pos = y;
-		draw_glyph(dest, dest_width, dest_height, bitmap, 0x00FFFFFF, x_pos, y_pos);
+		swr_draw_glyph(dest, dest_width, dest_height, bitmap, 0x00FFFFFF, x_pos, y_pos);
 
 		cursor_x += bitmap.width;
 	}
