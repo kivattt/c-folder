@@ -21,20 +21,20 @@ See [fontbmp.h](fontbmp.h) for detailed definitions
 ```c
 #include "fontbmp.h"
 
-struct Font font_bitmaps = fontbmp_initialize();
+struct Font font = fontbmp_initialize();
 
-FT_Error err = fontbmp_generate(&font_bitmaps, "Inter-Regular.ttf", 40);
+FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", 40);
 if (err) { /* ... */ }
 
 for (int c = 0; c <= 255; c++) {
-    struct GlyphBitmap glyph = font_bitmaps.glyph_list[c];
+    struct GlyphBitmap glyph = font.glyph_list[c];
 
     if (glyph.data == NULL) continue;
 
     printf("Char %c, index %i, width: %i, height: %i, data: %p\n", (char)c, c, glyph.width, glyph.height, glyph.data);
 }
 
-fontbmp_deinitialize(font_bitmaps);
+fontbmp_deinitialize(font);
 ```
 
 See [demo/demo.c](demo/demo.c) for a full example
