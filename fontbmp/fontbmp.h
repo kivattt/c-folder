@@ -8,12 +8,19 @@ struct GlyphBitmap {
 	int width;
 	int rows; // height
 	int pitch; // byte offset to get the next row
-	uint8_t *data;
+	uint8_t *bitmap_data;
+
+	// Advance x and y from Freetype2, (shift right by 6 to get pixel amount)
+	signed long advance_x;
+	signed long advance_y;
+
+	signed int bitmap_left;
+	signed int bitmap_top;
 };
 
 struct FontBitmaps {
 	struct GlyphBitmap *glyph_list;
-	uint8_t *bitmap_data;
+	uint8_t *internal_bitmap_data;
 };
 
 // Initialize the library

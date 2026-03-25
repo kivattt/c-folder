@@ -88,7 +88,7 @@ int main() {
 	int i = 0;
 	while (!glfwWindowShouldClose(window) && running) {
 		++i;
-		if (1 && (i % 4 == 0)) {
+		if (0 && (i % 4 == 0)) {
 			font_size += 1;
 			//printf("gen...\n");
 			//FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", font_size);

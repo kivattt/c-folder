@@ -153,7 +153,7 @@ void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyp
 			int img_index = img_sample_y * img.pitch + img_sample_x;
 
 			// TODO: Alpha blending
-			uint32_t img_color = swr_fade_opacity_to_black(img.data[img_index] << 24 | color); // Slow memory fetch bottleneck
+			uint32_t img_color = swr_fade_opacity_to_black(img.bitmap_data[img_index] << 24 | color); // Slow memory fetch bottleneck
 
 			// Set the pixel
 			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
@@ -163,19 +163,22 @@ void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyp
 }
 
 void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
-	int cursor_x = 0;
+	int pen_x = 0;
+	int pen_y = 0;
+
 	for (int i = 0; i < strlen(text); i++) {
 		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
 
-		struct GlyphBitmap bitmap = font_bitmaps->glyph_list[c];
-		if (bitmap.data == NULL) {
+		struct GlyphBitmap glyph = font_bitmaps->glyph_list[c];
+		if (glyph.bitmap_data == NULL) {
 			continue;
 		}
 
-		int x_pos = x + cursor_x;
-		int y_pos = y;
-		swr_draw_glyph(dest, dest_width, dest_height, bitmap, 0x00FFFFFF, x_pos, y_pos);
+		int x_pos = x + pen_x + glyph.bitmap_left;
+		int y_pos = y + pen_y - glyph.bitmap_top;
+		swr_draw_glyph(dest, dest_width, dest_height, glyph, 0x00FFFFFF, x_pos, y_pos);
 
-		cursor_x += bitmap.width;
+		pen_x += glyph.advance_x >> 6;
+		pen_y += glyph.advance_y >> 6;
 	}
 }

@@ -9,13 +9,13 @@
 struct FontBitmaps fontbmp_initialize() {
 	struct FontBitmaps out;
 	out.glyph_list = malloc(sizeof(struct GlyphBitmap) * 256);
-	out.bitmap_data = NULL;
+	out.internal_bitmap_data = NULL;
 	return out;
 };
 
 void fontbmp_deinitialize(struct FontBitmaps font_bitmaps) {
 	free(font_bitmaps.glyph_list);
-	free(font_bitmaps.bitmap_data);
+	free(font_bitmaps.internal_bitmap_data);
 }
 
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
@@ -61,13 +61,13 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 	}
 
 	/* Generate the font atlas */
-	free(font_bitmaps->bitmap_data);
-	font_bitmaps->bitmap_data = malloc(bitmap_size);
-	memset(font_bitmaps->bitmap_data, 0, bitmap_size);
+	free(font_bitmaps->internal_bitmap_data);
+	font_bitmaps->internal_bitmap_data = malloc(bitmap_size);
+	memset(font_bitmaps->internal_bitmap_data, 0, bitmap_size);
 
 	int index = 0;
 	for (int character = 0; character <= 255; character++) {
-		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = 0, .rows = 0, .data = NULL};
+		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
 
 		error = FT_Load_Char(face, character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
 		if (error) {
@@ -92,8 +92,17 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 		assert(width == pitch);
 
 		// If the pointer was the same as the last one, just index into the last one in glyph_bitmap_list
-		memcpy(&font_bitmaps->bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
-		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = width, .rows = rows, .pitch = pitch, .data = &(font_bitmaps->bitmap_data[index])};
+		memcpy(&font_bitmaps->internal_bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
+		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+			.width = width,
+			.rows = rows,
+			.pitch = pitch,
+			.bitmap_data = &(font_bitmaps->internal_bitmap_data[index]),
+			.advance_x = face->glyph->advance.x,
+			.advance_y = face->glyph->advance.y,
+			.bitmap_left = face->glyph->bitmap_left,
+			.bitmap_top = face->glyph->bitmap_top,
+		};
 		index += pitch * rows;
 		assert(index <= bitmap_size);
 	}
