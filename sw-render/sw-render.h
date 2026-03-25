@@ -22,7 +22,7 @@ void swr_draw_image_abgr(uint32_t *dest, int dest_width, int dest_height, uint32
 void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y);
 //void swr_draw_image_a   (uint32_t *dest, int dest_width, int dest_height, uint8_t  *img, int img_width, int img_height, uint32_t img_color, int img_x, int img_y);
 
-void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y);
+void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, int x, int y);
 
 // Internal functions
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);

@@ -70,7 +70,7 @@ int main() {
 
 	glfwSetKeyCallback(window, handle_input);
 
-	struct FontBitmaps font = fontbmp_initialize();
+	struct Font font = fontbmp_initialize();
 
 	int font_size = 40;
 	char *font_filename = "Inter-Regular.ttf";

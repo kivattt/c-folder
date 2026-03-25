@@ -170,7 +170,7 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 	return 0;
 }
 
-void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
+void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, int x, int y) {
 	int pen_x = 0;
 	int pen_y = 0;
 

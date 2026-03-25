@@ -21,7 +21,7 @@ See [fontbmp.h](fontbmp.h) for detailed definitions
 ```c
 #include "fontbmp.h"
 
-struct FontBitmaps font_bitmaps = fontbmp_initialize();
+struct Font font_bitmaps = fontbmp_initialize();
 
 FT_Error err = fontbmp_generate(&font_bitmaps, "Inter-Regular.ttf", 40);
 if (err) { /* ... */ }

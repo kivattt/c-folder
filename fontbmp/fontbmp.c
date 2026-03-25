@@ -7,21 +7,21 @@
 
 #include "fontbmp.h"
 
-struct FontBitmaps fontbmp_initialize() {
-	struct FontBitmaps out;
+struct Font fontbmp_initialize() {
+	struct Font out;
 	out.glyph_list = malloc(sizeof(struct GlyphBitmap) * 256);
 	out.internal_bitmap_data = NULL;
 	return out;
 };
 
-void fontbmp_deinitialize(struct FontBitmaps font_bitmaps) {
+void fontbmp_deinitialize(struct Font font_bitmaps) {
 	free(font_bitmaps.glyph_list);
 	free(font_bitmaps.internal_bitmap_data);
 }
 
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_filename, const int font_height_pixels) {
+FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, const int font_height_pixels) {
 	FT_Library library;
 	FT_Error error = 0;
 	FT_Face face;
