@@ -73,8 +73,8 @@ int main() {
 	struct FontBitmaps font = fontbmp_initialize();
 
 	int font_size = 40;
-	//char *font_filename = "Inter-Regular.ttf";
-	char *font_filename = "JetBrainsMono-Regular.ttf";
+	char *font_filename = "Inter-Regular.ttf";
+	//char *font_filename = "JetBrainsMono-Regular.ttf";
 	FT_Error err = fontbmp_generate(&font, font_filename, font_size);
 	if (err) {
 		printf("Error loading font: %i\n", err);
@@ -112,7 +112,8 @@ int main() {
 		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 
 		swr_draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
-		swr_draw_text(buffer, bufferWidth, bufferHeight, "it works now!! :D", &font, 200, 200);
+		swr_draw_text(buffer, bufferWidth, bufferHeight, "it works\tnow!!    :D", &font, 200, 200);
+		//swr_draw_text(buffer, bufferWidth, bufferHeight, "sånn er det bare. æøå", &font, 200, 200);
 
 		cvk_draw(window, buffer, width, height);
 	}

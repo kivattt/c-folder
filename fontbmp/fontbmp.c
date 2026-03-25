@@ -44,6 +44,11 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 	/* Figure out how big the resulting bitmap data will be */
 	int bitmap_size = 0;
 	for (int character = 0; character <= 255; character++) {
+		// Special case for space and tab
+		if (character == ' ' || character == '\t') {
+			continue;
+		}
+
 		error = FT_Load_Char(face, character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
 		if (error) {
 			goto done;
@@ -68,6 +73,25 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 	int index = 0;
 	for (int character = 0; character <= 255; character++) {
 		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
+
+		// Special case for space and tab
+		if (character == ' ') {
+			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
+			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+				.advance_x = face->glyph->advance.x,
+				.advance_y = face->glyph->advance.y,
+				.bitmap_data = NULL,
+			};
+			continue;
+		} else if (character == '\t') {
+			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
+			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+				.advance_x = face->glyph->advance.x * 4, // 4 spaces
+				.advance_y = 0,
+				.bitmap_data = NULL,
+			};
+			continue;
+		}
 
 		error = FT_Load_Char(face, character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
 		if (error) {

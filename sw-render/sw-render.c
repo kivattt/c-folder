@@ -171,6 +171,8 @@ void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *
 
 		struct GlyphBitmap glyph = font_bitmaps->glyph_list[c];
 		if (glyph.bitmap_data == NULL) {
+			pen_x += glyph.advance_x >> 6;
+			pen_y += glyph.advance_y >> 6;
 			continue;
 		}
 
