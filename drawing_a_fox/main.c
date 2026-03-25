@@ -73,7 +73,9 @@ int main() {
 	struct FontBitmaps font = fontbmp_initialize();
 
 	int font_size = 40;
-	FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", font_size);
+	//char *font_filename = "Inter-Regular.ttf";
+	char *font_filename = "JetBrainsMono-Regular.ttf";
+	FT_Error err = fontbmp_generate(&font, font_filename, font_size);
 	if (err) {
 		printf("Error loading font: %i\n", err);
 		return 1;
@@ -91,8 +93,7 @@ int main() {
 		if (0 && (i % 4 == 0)) {
 			font_size += 1;
 			//printf("gen...\n");
-			//FT_Error err = fontbmp_generate(&font, "Inter-Regular.ttf", font_size);
-			FT_Error err = fontbmp_generate(&font, "JetBrainsMono-Regular.ttf", font_size);
+			FT_Error err = fontbmp_generate(&font, font_filename, font_size);
 			if (err) {
 				printf("Error loading font: %i\n", err);
 				return 1;
