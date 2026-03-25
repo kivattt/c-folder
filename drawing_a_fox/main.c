@@ -112,8 +112,7 @@ int main() {
 		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 
 		swr_draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
-		swr_draw_text(buffer, bufferWidth, bufferHeight, "it works\tnow!!    :D", &font, 200, 200);
-		//swr_draw_text(buffer, bufferWidth, bufferHeight, "sånn er det bare. æøå", &font, 200, 200);
+		swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!\nline 2\nline 3\n", &font, 200, 200);
 
 		cvk_draw(window, buffer, width, height);
 	}

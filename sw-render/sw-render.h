@@ -25,4 +25,4 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y);
 
 // Internal functions
-void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
+int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);

@@ -3,6 +3,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <stdint.h>
+#include <math.h>
 
 #include "fontbmp.h"
 
@@ -44,8 +45,7 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 	/* Figure out how big the resulting bitmap data will be */
 	int bitmap_size = 0;
 	for (int character = 0; character <= 255; character++) {
-		// Special case for space and tab
-		if (character == ' ' || character == '\t') {
+		if (character == ' ' || character == '\t' || character == '\n') {
 			continue;
 		}
 
@@ -74,7 +74,6 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 	for (int character = 0; character <= 255; character++) {
 		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
 
-		// Special case for space and tab
 		if (character == ' ') {
 			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
 			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
@@ -88,6 +87,14 @@ FT_Error fontbmp_generate(struct FontBitmaps *font_bitmaps, const char *font_fil
 			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
 				.advance_x = face->glyph->advance.x * 4, // 4 spaces
 				.advance_y = 0,
+				.bitmap_data = NULL,
+			};
+			continue;
+		} else if (character == '\n') {
+			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
+			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+				.advance_x = 0, // It's up to the renderer to reset x position.
+				.advance_y = face->size->metrics.height,
 				.bitmap_data = NULL,
 			};
 			continue;

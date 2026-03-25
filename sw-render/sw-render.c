@@ -130,7 +130,8 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 }
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
-void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
+// Returns non-zero if it would draw outside of the screen (nothing to draw)
+int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,  .h = dest_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width, .h = img.rows};
 
@@ -143,6 +144,11 @@ void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyp
 	assert(visible.y >= 0);
 	assert(visible.w >= 0);
 	assert(visible.h >= 0);
+
+	// Nothing to draw
+	if (visible.w == 0 && visible.h == 0) {
+		return 1;
+	}
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
@@ -160,6 +166,8 @@ void swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyp
 			dest[buffer_index] = img_color;
 		}
 	}
+
+	return 0;
 }
 
 void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct FontBitmaps *font_bitmaps, int x, int y) {
@@ -173,12 +181,21 @@ void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *
 		if (glyph.bitmap_data == NULL) {
 			pen_x += glyph.advance_x >> 6;
 			pen_y += glyph.advance_y >> 6;
+
+			if (c == '\n') {
+				pen_x = 0;
+			}
 			continue;
 		}
 
 		int x_pos = x + pen_x + glyph.bitmap_left;
 		int y_pos = y + pen_y - glyph.bitmap_top;
-		swr_draw_glyph(dest, dest_width, dest_height, glyph, 0x00FFFFFF, x_pos, y_pos);
+
+		if (swr_draw_glyph(dest, dest_width, dest_height, glyph, 0x00FFFFFF, x_pos, y_pos)) {
+			// Nothing to draw beyond this line.
+			// FIXME: Skip to the next line. Also return if we drew the last visible line.
+			continue;
+		}
 
 		pen_x += glyph.advance_x >> 6;
 		pen_y += glyph.advance_y >> 6;
