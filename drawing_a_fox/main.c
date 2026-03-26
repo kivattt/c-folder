@@ -46,8 +46,8 @@ void handle_input(GLFWwindow *window, int key, int scancode, int action, int mod
 }
 
 int main() {
-	int width = 1920;
-	int height = 1080;
+	int width = 1280;
+	int height = 720;
 	assert(glfwInit());
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -71,7 +71,7 @@ int main() {
 
 	struct Font font = fontbmp_initialize();
 
-	int font_size = 40;
+	int font_size = 16;
 	char *font_filename = "Inter-Regular.ttf";
 	//char *font_filename = "JetBrainsMono-Regular.ttf";
 	FT_Error err = fontbmp_generate(&font, font_filename, font_size);
@@ -86,7 +86,9 @@ int main() {
 	}
 
 	//uint32_t color = 0xFFA2CB8B;
-	uint32_t color = 0xFF98d984;
+	//uint32_t color = 0xFF98d984;
+	//uint32_t color = 0xFF7fb2ff;
+	uint32_t color = swr_color_to_argb(0, 127, 178);
 
 	int frame_number = 0;
 	int i = 0;
@@ -114,8 +116,10 @@ int main() {
 		// Clear the screen
 		//memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 		for (int i = 0; i < bufferWidth * bufferHeight; i++) {
-			((uint32_t*)buffer)[i] = 0xFF000000 | color;
+			((uint32_t*)buffer)[i] = color;
 		}
+
+		swr_draw_text(buffer, bufferWidth, bufferHeight, "awa~ polska #1 norge nummer en (1). polska #1", &font, 0xFFFFFFFF, 5, 20);
 
 		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!\nline 2\nline 3\n", &font, 0xFFFFFFFF, 200, 200);
 		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!", &font, 0xFFFFFFFF, 200, 200);

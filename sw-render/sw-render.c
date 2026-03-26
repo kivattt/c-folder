@@ -29,6 +29,10 @@ struct Rect swr_rect_intersect(struct Rect a, struct Rect b) {
 	return out;
 }
 
+uint32_t swr_color_to_argb(uint8_t r, uint8_t g, uint8_t b) {
+	return 0xFF000000 | r << 16 | g << 8 | b;
+}
+
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return ROTR(__builtin_bswap32(abgr), 8);
 }
@@ -45,54 +49,11 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	return 0xFF000000 | r << 16 | g << 8 | b;
 }
 
-// Draws an ABGR img to the buffer at position img_x, img_y
-// Outputs in ARGB format.
-void swr_draw_image_abgr(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
-	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,  .h = img_height};
-
-	int x_offset = 0, y_offset = 0;
-	if (img_x < 0) x_offset = -img_x;
-	if (img_y < 0) y_offset = -img_y;
-
-	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
-	assert(visible.x >= 0);
-	assert(visible.y >= 0);
-	assert(visible.w >= 0);
-	assert(visible.h >= 0);
-
-	for (int y = 0; y < visible.h; y++) {
-		for (int x = 0; x < visible.w; x++) {
-			// Fetch the pixel from img
-			int img_sample_x = x + x_offset;
-			int img_sample_y = y + y_offset;
-			int img_index = img_sample_y * img_width + img_sample_x;
-			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
-			uint32_t img_color = swr_alpha_blend(dest[buffer_index], swr_abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
-
-			// Set the pixel
-			dest[buffer_index] = img_color;
-		}
-	}
-}
-
 // Converts an image from ABGR to ARGB in-place
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	for (int i = 0; i < length; i++) {
 		img[i] = swr_abgr_to_argb(img[i]);
 	}
-}
-
-// Converts a single-channel 8-bit alpha image to ARGB
-// This function allocates and returns a new image. Remember to free it!
-uint32_t *swr_convert_image_a_to_argb(uint8_t* img, int length) {
-	uint32_t *output = (uint32_t*)malloc(4 * length);
-
-	for (int i = 0; i < length; i++) {
-		output[i] = img[i] << 24 | 0x00FFFFFF;
-	}
-
-	return output;
 }
 
 void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
