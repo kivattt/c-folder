@@ -58,7 +58,7 @@ uint32_t swr_fade_opacity_to_black(uint32_t argb) {
 // Outputs in ARGB format.
 void swr_draw_image_abgr(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
-	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,  .h = img_height};
 
 	int x_offset = 0, y_offset = 0;
 	if (img_x < 0) x_offset = -img_x;
@@ -129,6 +129,38 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 	}
 }
 
+// 8-bit ARGB colors
+uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
+	float dest_alpha = (dest >> 24) / 255.0;
+	float src_alpha = (src >> 24) / 255.0;
+
+	float out_alpha = src_alpha + dest_alpha * (1.0 - src_alpha);
+
+	float dest_r = ((dest >> 16) & 0xFF) / 255.0;
+	float dest_g = ((dest >> 8) & 0xFF) / 255.0;
+	float dest_b = ((dest >> 0) & 0xFF) / 255.0;
+
+	float src_r = ((src >> 16) & 0xFF) / 255.0;
+	float src_g = ((src >> 8) & 0xFF) / 255.0;
+	float src_b = ((src >> 0) & 0xFF) / 255.0;
+
+	float out_r = src_r * src_alpha + dest_r * dest_alpha * (1.0 - src_alpha);
+	float out_g = src_g * src_alpha + dest_g * dest_alpha * (1.0 - src_alpha);
+	float out_b = src_b * src_alpha + dest_b * dest_alpha * (1.0 - src_alpha);
+
+	out_r /= MAX(out_alpha, 1e-6);
+	out_g /= MAX(out_alpha, 1e-6);
+	out_b /= MAX(out_alpha, 1e-6);
+
+	uint8_t a = out_alpha * 255.0;
+	uint8_t r = out_r * 255.0;
+	uint8_t g = out_g * 255.0;
+	uint8_t b = out_b * 255.0;
+
+	uint32_t out = a << 24 | r << 16 | g << 8 | b;
+	return out;
+}
+
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
 // Returns non-zero if it would draw outside of the screen (nothing to draw)
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
@@ -158,11 +190,12 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 			assert(img.pitch == img.width);
 			int img_index = img_sample_y * img.pitch + img_sample_x;
 
-			// TODO: Alpha blending
-			uint32_t img_color = swr_fade_opacity_to_black(img.bitmap_data[img_index] << 24 | color); // Slow memory fetch bottleneck
+			//uint32_t img_color = swr_fade_opacity_to_black(img.bitmap_data[img_index] << 24 | color); // Slow memory fetch bottleneck
+			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
+			uint8_t alpha = (float)(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
+			uint32_t img_color = swr_fade_opacity_to_black(swr_alpha_blend(dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF)));
 
 			// Set the pixel
-			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
 			dest[buffer_index] = img_color;
 		}
 	}
@@ -170,7 +203,8 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 	return 0;
 }
 
-void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, int x, int y) {
+// text_color is an 8-bit ARGB value.
+void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y) {
 	int pen_x = 0;
 	int pen_y = 0;
 
@@ -191,7 +225,7 @@ void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *
 		int x_pos = x + pen_x + glyph.bitmap_left;
 		int y_pos = y + pen_y - glyph.bitmap_top;
 
-		if (swr_draw_glyph(dest, dest_width, dest_height, glyph, 0x00FFFFFF, x_pos, y_pos)) {
+		if (swr_draw_glyph(dest, dest_width, dest_height, glyph, text_color, x_pos, y_pos)) {
 			// Nothing to draw beyond this line.
 			// FIXME: Skip to the next line. Also return if we drew the last visible line.
 			continue;
