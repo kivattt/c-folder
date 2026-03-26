@@ -42,7 +42,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	uint8_t g = (((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255;
 	uint8_t b = (((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255;
 
-	return a << 24 | r << 16 | g << 8 | b;
+	return 0xFF000000 | r << 16 | g << 8 | b;
 }
 
 // Draws an ABGR img to the buffer at position img_x, img_y
