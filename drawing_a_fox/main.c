@@ -46,8 +46,8 @@ void handle_input(GLFWwindow *window, int key, int scancode, int action, int mod
 }
 
 int main() {
-	int width = 1280;
-	int height = 720;
+	int width = 1920;
+	int height = 1080;
 	assert(glfwInit());
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -57,7 +57,6 @@ int main() {
 
 	int guyWidth, guyHeight, guyChannels;
 	unsigned char *guyImage = stbi_load("fox.png", &guyWidth, &guyHeight, &guyChannels, 4);
-	printf("guy channels: %i\n", guyChannels);
 
 	swr_convert_image_abgr_to_argb((uint32_t*)guyImage, guyWidth*guyHeight);
 
@@ -81,15 +80,19 @@ int main() {
 		return 1;
 	}
 
-	//char thing[256];
 	char *thing = malloc(255);
 	for (int i = 1; i < 256; i++) {
 		thing[i-1] = i;
 	}
 
+	//uint32_t color = 0xFFA2CB8B;
+	uint32_t color = 0xFF98d984;
+
+	int frame_number = 0;
 	int i = 0;
 	while (!glfwWindowShouldClose(window) && running) {
 		++i;
+		++frame_number;
 		if (0 && (i % 4 == 0)) {
 			font_size += 1;
 			//printf("gen...\n");
@@ -109,12 +112,26 @@ int main() {
 		usleep(7000); // 7 ms
 
 		// Clear the screen
-		memset(buffer, 0, 4 * bufferWidth * bufferHeight);
+		//memset(buffer, 0, 4 * bufferWidth * bufferHeight);
+		for (int i = 0; i < bufferWidth * bufferHeight; i++) {
+			((uint32_t*)buffer)[i] = 0xFF000000 | color;
+		}
+
+		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!\nline 2\nline 3\n", &font, 0xFFFFFFFF, 200, 200);
+		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!", &font, 0xFFFFFFFF, 200, 200);
+		for (int j = 0; j < 400; j += 100) {
+			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j);
+		}
 
 		swr_draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
-		swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!\nline 2\nline 3\n", &font, 0xFFFFFFFF, 200, 200);
+
+		for (int j = 0; j < 400; j += 100) {
+			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j + 400);
+		}
 
 		cvk_draw(window, buffer, width, height);
+
+		printf("frame %i\n", frame_number);
 	}
 
 	cvk_cleanup();
