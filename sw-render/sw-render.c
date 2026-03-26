@@ -37,35 +37,12 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest |= 0xFF000000;
 
-	float dest_alpha = (dest >> 24) / 255.0;
-	float src_alpha = (src >> 24) / 255.0;
+	uint8_t a = src >> 24;
+	uint8_t r = (((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255;
+	uint8_t g = (((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255;
+	uint8_t b = (((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255;
 
-	float out_alpha = src_alpha + dest_alpha * (1.0 - src_alpha);
-
-	float dest_r = ((dest >> 16) & 0xFF) / 255.0;
-	float dest_g = ((dest >> 8) & 0xFF) / 255.0;
-	float dest_b = ((dest >> 0) & 0xFF) / 255.0;
-
-	float src_r = ((src >> 16) & 0xFF) / 255.0;
-	float src_g = ((src >> 8) & 0xFF) / 255.0;
-	float src_b = ((src >> 0) & 0xFF) / 255.0;
-
-	float out_r = src_r * src_alpha + dest_r * dest_alpha * (1.0 - src_alpha);
-	float out_g = src_g * src_alpha + dest_g * dest_alpha * (1.0 - src_alpha);
-	float out_b = src_b * src_alpha + dest_b * dest_alpha * (1.0 - src_alpha);
-
-	float mul_by = 1.0 / MAX(out_alpha, 1e-6);
-	out_r *= mul_by;
-	out_g *= mul_by;
-	out_b *= mul_by;
-
-	uint8_t a = out_alpha * 255.0;
-	uint8_t r = out_r * 255.0;
-	uint8_t g = out_g * 255.0;
-	uint8_t b = out_b * 255.0;
-
-	uint32_t out = a << 24 | r << 16 | g << 8 | b;
-	return out;
+	return a << 24 | r << 16 | g << 8 | b;
 }
 
 // Draws an ABGR img to the buffer at position img_x, img_y
