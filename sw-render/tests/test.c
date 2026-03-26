@@ -26,7 +26,7 @@ struct TestCaseRectIntersect {
 	struct Rect expected;
 };
 
-int test_rect_intersect() {
+int test_swr_rect_intersect() {
 #define NUM_INTERSECT_TESTS 4
 	struct TestCaseRectIntersect tests[NUM_INTERSECT_TESTS] = {
 		{
@@ -73,10 +73,27 @@ int test_rect_intersect() {
 	return 0;
 }
 
-int test_abgr_to_argb() {
+int test_swr_abgr_to_argb() {
 	uint32_t input =    0xFFAABBCC;
 	uint32_t expected = 0xFFCCBBAA;
 	uint32_t result = swr_abgr_to_argb(input);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %x\n", expected);
+		printf("But got : %x\n", result);
+		return 1;
+	}
+
+	print_green(" Success\n");
+	return 0;
+}
+
+int test_swr_alpha_blend() {
+	uint32_t dest     = 0xFF000000;
+	uint32_t src      = 0xAAFFFFFF;
+	uint32_t expected = 0xFFAAAAAA;
+	uint32_t result = swr_alpha_blend(dest, src);
 	if (result != expected) {
 		print_red(" Failed\n");
 
@@ -93,14 +110,20 @@ int main() {
 	int result;
 	int failed = 0;
 
-	print_gray("test_rect_intersect():");
-	result = test_rect_intersect();
+	print_gray("test_swr_rect_intersect():");
+	result = test_swr_rect_intersect();
 	if (result != 0) {
 		failed = 1;
 	}
 
-	print_gray("test_abgr_to_argb():");
-	result = test_abgr_to_argb();
+	print_gray("test_swr_abgr_to_argb():");
+	result = test_swr_abgr_to_argb();
+	if (result != 0) {
+		failed = 1;
+	}
+
+	print_gray("test_swr_alpha_blend():");
+	result = test_swr_alpha_blend();
 	if (result != 0) {
 		failed = 1;
 	}
