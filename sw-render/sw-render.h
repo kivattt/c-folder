@@ -12,7 +12,6 @@ struct Rect {
 
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b);
 
-uint32_t swr_fade_opacity_to_black(uint32_t argb);
 uint32_t swr_abgr_to_argb(uint32_t abgr);
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 

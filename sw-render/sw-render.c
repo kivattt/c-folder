@@ -33,25 +33,39 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return ROTR(__builtin_bswap32(abgr), 8);
 }
 
-uint32_t swr_fade_opacity_to_black(uint32_t argb) {
-	uint8_t alpha = argb >> 24; // 0 to 255
-	uint16_t r = (argb >> 16) & 0xff;
-	uint16_t g = (argb >> 8) & 0xff;
-	uint16_t b = (argb >> 0) & 0xff;
+// 8-bit ARGB colors
+uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
+	dest |= 0xFF000000;
 
-	r *= alpha;
-	g *= alpha;
-	b *= alpha;
+	float dest_alpha = (dest >> 24) / 255.0;
+	float src_alpha = (src >> 24) / 255.0;
 
-	r /= 255;
-	g /= 255;
-	b /= 255;
+	float out_alpha = src_alpha + dest_alpha * (1.0 - src_alpha);
 
-	assert(r < 256);
-	assert(g < 256);
-	assert(b < 256);
+	float dest_r = ((dest >> 16) & 0xFF) / 255.0;
+	float dest_g = ((dest >> 8) & 0xFF) / 255.0;
+	float dest_b = ((dest >> 0) & 0xFF) / 255.0;
 
-	return 0xFF000000 | r << 16 | g << 8 | b;
+	float src_r = ((src >> 16) & 0xFF) / 255.0;
+	float src_g = ((src >> 8) & 0xFF) / 255.0;
+	float src_b = ((src >> 0) & 0xFF) / 255.0;
+
+	float out_r = src_r * src_alpha + dest_r * dest_alpha * (1.0 - src_alpha);
+	float out_g = src_g * src_alpha + dest_g * dest_alpha * (1.0 - src_alpha);
+	float out_b = src_b * src_alpha + dest_b * dest_alpha * (1.0 - src_alpha);
+
+	float mul_by = 1.0 / MAX(out_alpha, 1e-6);
+	out_r *= mul_by;
+	out_g *= mul_by;
+	out_b *= mul_by;
+
+	uint8_t a = out_alpha * 255.0;
+	uint8_t r = out_r * 255.0;
+	uint8_t g = out_g * 255.0;
+	uint8_t b = out_b * 255.0;
+
+	uint32_t out = a << 24 | r << 16 | g << 8 | b;
+	return out;
 }
 
 // Draws an ABGR img to the buffer at position img_x, img_y
@@ -76,20 +90,19 @@ void swr_draw_image_abgr(uint32_t *dest, int dest_width, int dest_height, uint32
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			int img_index = img_sample_y * img_width + img_sample_x;
-			uint32_t img_color = swr_fade_opacity_to_black(swr_abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
+			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
+			uint32_t img_color = swr_alpha_blend(dest[buffer_index], swr_abgr_to_argb(img[img_index])); // Slow memory fetch bottleneck
 
 			// Set the pixel
-			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
 			dest[buffer_index] = img_color;
 		}
 	}
 }
 
 // Converts an image from ABGR to ARGB in-place
-// Fades opacity to black
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	for (int i = 0; i < length; i++) {
-		img[i] = swr_fade_opacity_to_black(swr_abgr_to_argb(img[i]));
+		img[i] = swr_abgr_to_argb(img[i]);
 	}
 }
 
@@ -99,7 +112,7 @@ uint32_t *swr_convert_image_a_to_argb(uint8_t* img, int length) {
 	uint32_t *output = (uint32_t*)malloc(4 * length);
 
 	for (int i = 0; i < length; i++) {
-		output[i] = swr_fade_opacity_to_black(img[i] << 24 | 0x00FFFFFF);
+		output[i] = img[i] << 24 | 0x00FFFFFF;
 	}
 
 	return output;
@@ -107,7 +120,7 @@ uint32_t *swr_convert_image_a_to_argb(uint8_t* img, int length) {
 
 void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
-	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,    .h = img_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,  .h = img_height};
 
 	int x_offset = 0, y_offset = 0;
 	if (img_x < 0) x_offset = -img_x;
@@ -125,46 +138,18 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 		int img_index = img_sample_y * img_width + img_sample_x;
 
 		int dest_index = (visible.y+y) * dest_width + (visible.x);
-		memcpy(dest+dest_index, img+img_index, visible.w * 4);
+		//memcpy(dest+dest_index, img+img_index, visible.w * 4);
+
+		for (int x = 0; x < visible.w; x++) {
+			dest[dest_index + x] = swr_alpha_blend(dest[dest_index + x], img[img_index + x]);
+		}
 	}
-}
-
-// 8-bit ARGB colors
-uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
-	float dest_alpha = (dest >> 24) / 255.0;
-	float src_alpha = (src >> 24) / 255.0;
-
-	float out_alpha = src_alpha + dest_alpha * (1.0 - src_alpha);
-
-	float dest_r = ((dest >> 16) & 0xFF) / 255.0;
-	float dest_g = ((dest >> 8) & 0xFF) / 255.0;
-	float dest_b = ((dest >> 0) & 0xFF) / 255.0;
-
-	float src_r = ((src >> 16) & 0xFF) / 255.0;
-	float src_g = ((src >> 8) & 0xFF) / 255.0;
-	float src_b = ((src >> 0) & 0xFF) / 255.0;
-
-	float out_r = src_r * src_alpha + dest_r * dest_alpha * (1.0 - src_alpha);
-	float out_g = src_g * src_alpha + dest_g * dest_alpha * (1.0 - src_alpha);
-	float out_b = src_b * src_alpha + dest_b * dest_alpha * (1.0 - src_alpha);
-
-	out_r /= MAX(out_alpha, 1e-6);
-	out_g /= MAX(out_alpha, 1e-6);
-	out_b /= MAX(out_alpha, 1e-6);
-
-	uint8_t a = out_alpha * 255.0;
-	uint8_t r = out_r * 255.0;
-	uint8_t g = out_g * 255.0;
-	uint8_t b = out_b * 255.0;
-
-	uint32_t out = a << 24 | r << 16 | g << 8 | b;
-	return out;
 }
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
 // Returns non-zero if it would draw outside of the screen (nothing to draw)
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,  .h = dest_height};
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,.h = dest_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width, .h = img.rows};
 
 	int x_offset = 0, y_offset = 0;
@@ -190,10 +175,9 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 			assert(img.pitch == img.width);
 			int img_index = img_sample_y * img.pitch + img_sample_x;
 
-			//uint32_t img_color = swr_fade_opacity_to_black(img.bitmap_data[img_index] << 24 | color); // Slow memory fetch bottleneck
 			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
 			uint8_t alpha = (float)(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
-			uint32_t img_color = swr_fade_opacity_to_black(swr_alpha_blend(dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF)));
+			uint32_t img_color = swr_alpha_blend(dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF));
 
 			// Set the pixel
 			dest[buffer_index] = img_color;
