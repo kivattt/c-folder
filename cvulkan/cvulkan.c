@@ -1,3 +1,4 @@
+#include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -469,7 +470,7 @@ void transition_image(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayou
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	} else { // TODO: create specific barriers for other transitions if needed
 		barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
@@ -696,6 +697,8 @@ void cvk_draw(GLFWwindow* window, void* image, size_t width, size_t height) {
 	if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) return;
 
 	if (vk_ctx->update_swapchain) {
+		vkDeviceWaitIdle(vk_ctx->device);
+
 		vk_ctx->update_swapchain = false;
 		assert(init_swapchain(window));
 		printf("Swapchain recreated with new size %dx%d\n", vk_ctx->swapchain_extent.width, vk_ctx->swapchain_extent.height);
@@ -704,7 +707,6 @@ void cvk_draw(GLFWwindow* window, void* image, size_t width, size_t height) {
 	FrameData* frame = &vk_ctx->frames[vk_ctx->current_frame%MAX_FRAMES_IN_FLIGHT];
 
 	vkWaitForFences(vk_ctx->device, 1, &frame->render_finished_fence, VK_TRUE, UINT64_MAX);
-	vkResetFences(vk_ctx->device, 1, &frame->render_finished_fence);
 
 	VkExtent3D copyExtent;
 	copyExtent.width = vk_ctx->swapchain_extent.width;
@@ -726,7 +728,19 @@ void cvk_draw(GLFWwindow* window, void* image, size_t width, size_t height) {
 	}
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(vk_ctx->device, vk_ctx->swapchain, UINT64_MAX, frame->image_available_semaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(vk_ctx->device, vk_ctx->swapchain, UINT64_MAX, frame->image_available_semaphore, VK_NULL_HANDLE, &imageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		vk_ctx->update_swapchain = true;
+		return;
+	}
+
+	if (result == VK_SUBOPTIMAL_KHR) {
+		vk_ctx->update_swapchain = true;
+	} else if (result != VK_SUCCESS) {
+		assert(0);
+	}
+
+	vkResetFences(vk_ctx->device, 1, &frame->render_finished_fence);
 
 	VkCommandBuffer cmd = frame->command_buffer;
 
