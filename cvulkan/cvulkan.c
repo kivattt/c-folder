@@ -697,8 +697,6 @@ void cvk_draw(GLFWwindow* window, void* image, size_t width, size_t height) {
 	if (glfwGetWindowAttrib(window, GLFW_ICONIFIED)) return;
 
 	if (vk_ctx->update_swapchain) {
-		vkDeviceWaitIdle(vk_ctx->device);
-
 		vk_ctx->update_swapchain = false;
 		assert(init_swapchain(window));
 		printf("Swapchain recreated with new size %dx%d\n", vk_ctx->swapchain_extent.width, vk_ctx->swapchain_extent.height);
