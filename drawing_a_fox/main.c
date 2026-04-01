@@ -9,6 +9,7 @@
 #include "../cvulkan/cvulkan.h"
 #include "../sw-render/sw-render.h"
 #include "../fontbmp/fontbmp.h"
+#include "../deltatime/deltatime.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -54,6 +55,7 @@ int main() {
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	GLFWwindow* window = glfwCreateWindow(width, height, "GLFW+Vulkan for software rendering", NULL, NULL);
+	deltatime_set_target_fps(75.0);
 
 	int guyWidth, guyHeight, guyChannels;
 	unsigned char *guyImage = stbi_load("fox.png", &guyWidth, &guyHeight, &guyChannels, 4);
@@ -91,13 +93,13 @@ int main() {
 	uint32_t color = swr_color_to_argb(0, 127, 178);
 
 	int frame_number = 0;
-	int i = 0;
 	while (!glfwWindowShouldClose(window) && running) {
-		++i;
+		double delta_sec = deltatime_start_frame();
+		printf("Delta: %f\n", delta_sec);
+
 		++frame_number;
-		if (0 && (i % 4 == 0)) {
+		if (0 && (frame_number % 4 == 0)) {
 			font_size += 1;
-			//printf("gen...\n");
 			FT_Error err = fontbmp_generate(&font, font_filename, font_size);
 			if (err) {
 				printf("Error loading font: %i\n", err);
@@ -111,18 +113,14 @@ int main() {
 		if (key_s) y += speed;
 		if (key_a) x -= speed;
 		if (key_d) x += speed;
-		usleep(7000); // 7 ms
 
 		// Clear the screen
-		//memset(buffer, 0, 4 * bufferWidth * bufferHeight);
 		for (int i = 0; i < bufferWidth * bufferHeight; i++) {
 			((uint32_t*)buffer)[i] = color;
 		}
 
 		swr_draw_text(buffer, bufferWidth, bufferHeight, "awa~ polska #1 norge nummer en (1). polska #1", &font, 0xFFFFFFFF, 5, 20);
 
-		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!\nline 2\nline 3\n", &font, 0xFFFFFFFF, 200, 200);
-		//swr_draw_text(buffer, bufferWidth, bufferHeight, "s\xe5nn er det bare. \xe6\xf8\xe5\nhello world!", &font, 0xFFFFFFFF, 200, 200);
 		for (int j = 0; j < 400; j += 100) {
 			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j);
 		}
@@ -135,7 +133,7 @@ int main() {
 
 		cvk_draw(window, buffer, width, height);
 
-		printf("frame %i\n", frame_number);
+		deltatime_end_frame();
 	}
 
 	cvk_cleanup();
