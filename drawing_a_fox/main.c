@@ -87,9 +87,6 @@ int main() {
 		thing[i-1] = i;
 	}
 
-	//uint32_t color = 0xFFA2CB8B;
-	//uint32_t color = 0xFF98d984;
-	//uint32_t color = 0xFF7fb2ff;
 	uint32_t color = swr_color_to_argb(0, 127, 178);
 
 	int frame_number = 0;
