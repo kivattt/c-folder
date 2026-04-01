@@ -8,6 +8,8 @@ Only works on Linux + GLFW for now.
 
 ## Usage
 ```c
+#include "deltatime.h"
+
 deltatime_set_target_fps(60.0);
 
 // Main frame loop
