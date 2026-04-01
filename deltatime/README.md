@@ -24,5 +24,5 @@ while (1) {
 
 ## Known issues
 
-- We're probably sleeping in the wrong place, should probably be before cvk\_draw...
+- We're probably sleeping in the wrong place, should be before cvk\_draw...
 - If the target fps is higher than whatever cvulkan chose, the deltatime will be wrong (smaller) when moving the window around
