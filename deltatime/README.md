@@ -18,7 +18,7 @@ while (1) {
 
     // Do work
 
-    deltatime_end_frame();
+    deltatime_end_frame(); // This sleeps the remaining amount to reach target framerate
 }
 ```
 
