@@ -26,3 +26,7 @@ void deltatime_end_frame() {
 
 	deltatime_data_global.delta_sec = glfwGetTime() - deltatime_data_global.last_timestamp;
 }
+
+double deltatime_fps() {
+	return 1.0 / deltatime_data_global.delta_sec;
+}

@@ -92,7 +92,8 @@ int main() {
 	int frame_number = 0;
 	while (!glfwWindowShouldClose(window) && running) {
 		double delta_sec = deltatime_start_frame();
-		printf("Delta: %f\n", delta_sec);
+		//printf("Delta: %f\n", delta_sec);
+		printf("FPS: %f\n", deltatime_fps());
 
 		++frame_number;
 		if (0 && (frame_number % 4 == 0)) {
