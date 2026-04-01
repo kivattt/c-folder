@@ -1,5 +1,7 @@
 ## deltatime
 
+**Only meant to be used with the ../cvulkan library**
+
 Deltatime + sleeping for target framerate on GLFW.
 
 Only works on Linux + GLFW for now.
@@ -17,3 +19,8 @@ while (1) {
     deltatime_end_frame();
 }
 ```
+
+## Known issues
+
+- If the target fps is higher than whatever cvulkan chose, the deltatime will be wrong (smaller) when moving the window around
+- We're probably sleeping in the wrong place, should probably be before cvk\_draw...
