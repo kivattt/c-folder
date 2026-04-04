@@ -87,7 +87,8 @@ int main() {
 		thing[i-1] = i;
 	}
 
-	uint32_t color = swr_color_to_argb(0, 127, 178);
+	//uint32_t color = swr_color_to_argb(0, 127, 178);
+	uint32_t color = swr_color_to_argb(0, 0, 0);
 
 	int frame_number = 0;
 	while (!glfwWindowShouldClose(window) && running) {
@@ -128,6 +129,14 @@ int main() {
 		for (int j = 0; j < 400; j += 100) {
 			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j + 400);
 		}
+
+		struct Rect r = {
+			.x = 400.0,
+			.y = 80.0,
+			.w = 200.0,
+			.h = 40.0,
+		};
+		swr_draw_rectangle_rounded(buffer, bufferWidth, bufferHeight, r, 0xFFFFFFFF, 18.0);
 
 		cvk_draw(window, buffer, width, height);
 

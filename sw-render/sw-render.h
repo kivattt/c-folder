@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <math.h>
 #include <immintrin.h>
 #include <assert.h>
 
@@ -22,5 +23,8 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 
 void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);
 
+void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius);
+
 // Internal functions
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
+float swr_sdf_rect(int x, int y, struct Rect rect, float radius);
