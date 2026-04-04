@@ -87,8 +87,8 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
 // Returns non-zero if it would draw outside of the screen (nothing to draw)
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width,.h = dest_height};
-	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width, .h = img.rows};
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
+	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width,  .h = img.rows};
 
 	int x_offset = 0, y_offset = 0;
 	if (img_x < 0) x_offset = -img_x;
