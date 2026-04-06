@@ -11,6 +11,10 @@ struct Rect {
 	int32_t x, y, w, h;
 };
 
+struct FloatRect {
+	float x, y, w, h;
+};
+
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b);
 
 uint32_t swr_color_to_argb(uint8_t r, uint8_t g, uint8_t b);
@@ -27,4 +31,4 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 
 // Internal functions
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
-float swr_sdf_rect(int x, int y, struct Rect rect, float radius);
+float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius);

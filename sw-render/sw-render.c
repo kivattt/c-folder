@@ -158,17 +158,15 @@ void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *
 	}
 }
 
-float swr_sdf_rect(int x, int y, struct Rect rect, float radius) {
-	rect.x += 0.5;
-	rect.y += 0.5;
+float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {
 	rect.w -= 1.0;
 	rect.h -= 1.0;
 
 	x -= rect.x + rect.w / 2.0;
 	y -= rect.y + rect.h / 2.0;
 
-	float q_x = abs(x) - rect.w / 2.0 + radius;
-	float q_y = abs(y) - rect.h / 2.0 + radius;
+	float q_x = fabs(x) - rect.w / 2.0 + radius;
+	float q_y = fabs(y) - rect.h / 2.0 + radius;
 	float q_x_positive = MAX(0.0, q_x);
 	float q_y_positive = MAX(0.0, q_y);
 
@@ -191,13 +189,20 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 
 	float color_alpha = (float)(color >> 24) / 255.0;
 
+	struct FloatRect float_rect = {
+		.x = rect.x,
+		.y = rect.y,
+		.w = rect.w,
+		.h = rect.h,
+	};
+
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
 			int sample_x = x + x_offset + rect.x;
 			int sample_y = y + y_offset + rect.y;
 			int dest_index = sample_y * dest_width + sample_x;
 
-			float alpha = 255.0 * color_alpha * swr_sdf_rect(sample_x, sample_y, rect, radius);
+			float alpha = 255.0 * color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
 			uint32_t the_color = (uint8_t)alpha << 24 | (color & 0x00FFFFFF);
 			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
 			dest[dest_index] = output_color;
