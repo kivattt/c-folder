@@ -37,6 +37,14 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return ROTR(__builtin_bswap32(abgr), 8);
 }
 
+float swr_argb_to_float_alpha(uint32_t argb) {
+	return (float)(argb >> 24) / 255.0;
+}
+
+uint32_t swr_float_alpha_to_argb(float alpha) {
+	return (uint8_t)alpha << 24;
+}
+
 // 8-bit ARGB colors
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest |= 0xFF000000;
@@ -175,7 +183,7 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 		.w = rect.w,
 		.h = rect.h,
 	};
-	float color_alpha = (float)(color >> 24) / 255.0;
+	float color_alpha = swr_argb_to_float_alpha(color);
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
@@ -184,7 +192,8 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 			int dest_index = sample_y * dest_width + sample_x;
 
 			float alpha = 255.0 * color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
-			uint32_t the_color = (uint8_t)alpha << 24 | (color & 0x00FFFFFF);
+			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
+
 			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
 			dest[dest_index] = output_color;
 		}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 #include <math.h>
 #include <immintrin.h>
 #include <assert.h>
@@ -32,3 +33,5 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 // Internal functions
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
 float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius);
+float swr_argb_to_float_alpha(uint32_t argb);
+uint32_t swr_float_alpha_to_argb(float alpha);
