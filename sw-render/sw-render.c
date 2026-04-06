@@ -189,11 +189,11 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 		for (int x = 0; x < visible.w; x++) {
 			int sample_x = x + x_offset;
 			int sample_y = y + y_offset;
-			int dest_index = sample_y * dest_width + sample_x;
 
 			float alpha = color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
+			int dest_index = sample_y * dest_width + sample_x;
 			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
 			dest[dest_index] = output_color;
 		}
