@@ -106,10 +106,43 @@ int test_swr_alpha_blend() {
 	return 0;
 }
 
+int test_swr_argb_to_float_alpha() {
+	uint32_t input = 0xAA000000;
+	float expected = 0xAA / 255.0;
+	float result = swr_argb_to_float_alpha(input);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %f\n", expected);
+		printf("But got : %f\n", result);
+		return 1;
+	}
+
+	print_green(" Success\n");
+	return 0;
+}
+
+int test_swr_float_alpha_to_argb() {
+	float input = 0.5;
+	uint32_t expected = 0x7f000000;
+	uint32_t result = swr_float_alpha_to_argb(input);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %x\n", expected);
+		printf("But got : %x\n", result);
+		return 1;
+	}
+
+	print_green(" Success\n");
+	return 0;
+}
+
 int main() {
 	int result;
 	int failed = 0;
 
+	// All the tests
 	print_gray("test_swr_rect_intersect():");
 	result = test_swr_rect_intersect();
 	if (result != 0) {
@@ -128,6 +161,19 @@ int main() {
 		failed = 1;
 	}
 
+	print_gray("test_swr_argb_to_float_alpha():");
+	result = test_swr_argb_to_float_alpha();
+	if (result != 0) {
+		failed = 1;
+	}
+
+	print_gray("test_swr_float_alpha_to_argb():");
+	result = test_swr_float_alpha_to_argb();
+	if (result != 0) {
+		failed = 1;
+	}
+
+	// Final output: did any test fail?
 	printf("\n");
 	if (failed) {
 		print_red("FAIL\n");

@@ -42,7 +42,7 @@ float swr_argb_to_float_alpha(uint32_t argb) {
 }
 
 uint32_t swr_float_alpha_to_argb(float alpha) {
-	return (uint8_t)alpha << 24;
+	return (uint8_t)(alpha * 255.0) << 24;
 }
 
 // 8-bit ARGB colors
@@ -191,7 +191,7 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 			int sample_y = y + y_offset;
 			int dest_index = sample_y * dest_width + sample_x;
 
-			float alpha = 255.0 * color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
+			float alpha = color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
 			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
