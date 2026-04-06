@@ -175,7 +175,7 @@ float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {
 }
 
 void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
+	struct Rect buffer_rect = {.x = 0, .y = 0, .w = dest_width, .h = dest_height};
 
 	int x_offset = 0, y_offset = 0;
 	if (rect.x < 0) x_offset = -rect.x;
