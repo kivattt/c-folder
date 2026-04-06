@@ -60,15 +60,9 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,  .h = img_height};
 
-	int x_offset = 0, y_offset = 0;
-	if (img_x < 0) x_offset = -img_x;
-	if (img_y < 0) y_offset = -img_y;
-
 	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
-	assert(visible.x >= 0);
-	assert(visible.y >= 0);
-	assert(visible.w >= 0);
-	assert(visible.h >= 0);
+	int x_offset = -MIN(0, img_x);
+	int y_offset = -MIN(0, img_y);
 
 	for (int y = 0; y < visible.h; y++) {
 		int img_sample_x = x_offset;
@@ -90,15 +84,9 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width,  .h = img.rows};
 
-	int x_offset = 0, y_offset = 0;
-	if (img_x < 0) x_offset = -img_x;
-	if (img_y < 0) y_offset = -img_y;
-
 	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
-	assert(visible.x >= 0);
-	assert(visible.y >= 0);
-	assert(visible.w >= 0);
-	assert(visible.h >= 0);
+	int x_offset = -MIN(0, img_x);
+	int y_offset = -MIN(0, img_y);
 
 	// Nothing to draw
 	if (visible.w == 0 && visible.h == 0) {
@@ -177,17 +165,9 @@ float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {
 void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius) {
 	struct Rect buffer_rect = {.x = 0, .y = 0, .w = dest_width, .h = dest_height};
 
-	int x_offset = 0, y_offset = 0;
-	if (rect.x < 0) x_offset = -rect.x;
-	if (rect.y < 0) y_offset = -rect.y;
-
 	struct Rect visible = swr_rect_intersect(buffer_rect, rect);
-	assert(visible.x >= 0);
-	assert(visible.y >= 0);
-	assert(visible.w >= 0);
-	assert(visible.h >= 0);
-
-	float color_alpha = (float)(color >> 24) / 255.0;
+	int x_offset = MAX(0, rect.x);
+	int y_offset = MAX(0, rect.y);
 
 	struct FloatRect float_rect = {
 		.x = rect.x,
@@ -195,11 +175,12 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 		.w = rect.w,
 		.h = rect.h,
 	};
+	float color_alpha = (float)(color >> 24) / 255.0;
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
-			int sample_x = x + x_offset + rect.x;
-			int sample_y = y + y_offset + rect.y;
+			int sample_x = x + x_offset;
+			int sample_y = y + y_offset;
 			int dest_index = sample_y * dest_width + sample_x;
 
 			float alpha = 255.0 * color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
