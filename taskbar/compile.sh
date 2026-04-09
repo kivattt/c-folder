@@ -1,1 +1,1 @@
-gcc -O3 main.c -o taskbar -lX11
+gcc -O3 main.c -o taskbar -lX11 -lXrandr
