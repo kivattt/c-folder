@@ -199,3 +199,62 @@ void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height,
 		}
 	}
 }
+
+float swr_sdf_rect_outline(float x, float y, struct FloatRect rect, float radius, float thickness_inward, float thickness_outward) {
+	rect.w -= 1.0;
+	rect.h -= 1.0;
+
+	x -= rect.x + rect.w / 2.0;
+	y -= rect.y + rect.h / 2.0;
+
+	float q_x = fabs(x) - rect.w / 2.0 + radius;
+	float q_y = fabs(y) - rect.h / 2.0 + radius;
+	float q_x_positive = MAX(0.0, q_x);
+	float q_y_positive = MAX(0.0, q_y);
+
+	float result = MIN(0.0, MAX(q_x, q_y)) + sqrt(q_x_positive*q_x_positive + q_y_positive*q_y_positive) - radius;
+
+	float t_in = thickness_inward / 2.0;
+	float t_out = thickness_outward / 2.0;
+	result = MAX(0.0, fabs(result - t_out + t_in) - t_out - t_in);
+	return 1.0 - MAX(0.0, MIN(1.0, result));
+}
+
+void swr_draw_rectangle_rounded_outline(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward) {
+	struct Rect buffer_rect = {.x = 0, .y = 0, .w = dest_width, .h = dest_height};
+
+	struct Rect visible = swr_rect_intersect(buffer_rect, rect);
+
+	// Need some extra space if the thickness extends outward
+	int grow = ceil(thickness_outward);
+	visible.x -= grow;
+	visible.y -= grow;
+	visible.w += 2 * grow;
+	visible.h += 2 * grow;
+	visible = swr_rect_intersect(visible, buffer_rect);
+
+	int x_offset = MAX(0, rect.x - grow);
+	int y_offset = MAX(0, rect.y - grow);
+
+	struct FloatRect float_rect = {
+		.x = rect.x,
+		.y = rect.y,
+		.w = rect.w,
+		.h = rect.h,
+	};
+	float color_alpha = swr_argb_to_float_alpha(color);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int sample_x = x + x_offset;
+			int sample_y = y + y_offset;
+
+			float alpha = color_alpha * swr_sdf_rect_outline(sample_x, sample_y, float_rect, radius, thickness_inward, thickness_outward);
+			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
+
+			int dest_index = sample_y * dest_width + sample_x;
+			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
+			dest[dest_index] = output_color;
+		}
+	}
+}

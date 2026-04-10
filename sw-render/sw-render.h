@@ -29,9 +29,11 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);
 
 void swr_draw_rectangle_rounded(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius);
+void swr_draw_rectangle_rounded_outline(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
 // Internal functions
 int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
 float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius);
+float swr_sdf_rect_outline(float x, float y, struct FloatRect rect, float radius, float thickness_inward, float thickness_outward);
 float swr_argb_to_float_alpha(uint32_t argb);
 uint32_t swr_float_alpha_to_argb(float alpha);
