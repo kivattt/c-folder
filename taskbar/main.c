@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "../sw-render/sw-render.h"
+
 #define BAR_HEIGHT 30
 
 typedef struct {
@@ -79,24 +81,27 @@ int main() {
     }
     XRRFreeScreenResources(res);
 
-    int frame = 0;
+	printf("Num monitors: %i\n", n_monitors);
+
     while (1) {
-        frame++;
-        usleep(16 * 1000);
+        usleep(33 * 1000); // 30 fps target
 
         // --- Draw per monitor ---
         for (int m = 0; m < n_monitors; m++) {
             BarMonitor *b = &bars[m];
 
-			if (m == 0) {
-				for (int i = 0; i < b->width * b->height; i++) {
-					b->pixels[i] = 0xFF000000 | (frame & 0xFF);
-				}
-			} else {
-				for (int i = 0; i < b->width * b->height; i++) {
-					b->pixels[i] = 0xFF000000 | ((frame & 0xff) << 8);
-				}
+			for (int i = 0; i < b->width * b->height; i++) {
+				b->pixels[i] = swr_color_to_argb(46, 46, 46);
 			}
+
+			// Thin highlight at the top row
+			struct Rect rect = (struct Rect){
+				.x = 0,
+				.y = 0,
+				.w = b->width,
+				.h = 1,
+			};
+			swr_draw_rectangle_rounded(b->pixels, b->width, b->height, rect, 0xFF434343, 0.0);
 
             XPutImage(dpy, b->window, gc, b->fb, 0, 0, 0, 0, b->width, b->height);
         }

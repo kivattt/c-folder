@@ -1,0 +1,62 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-O3",
+      "-Wall",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "taskbar",
+      "main.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/taskbar",
+    "file": "/home/kivah/main/projects/c-folder/taskbar/main.c",
+    "output": "/home/kivah/main/projects/c-folder/taskbar/taskbar"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-O3",
+      "-Wall",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "taskbar",
+      "../sw-render/sw-render.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/taskbar",
+    "file": "/home/kivah/main/projects/c-folder/sw-render/sw-render.c",
+    "output": "/home/kivah/main/projects/c-folder/taskbar/taskbar"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-O3",
+      "-Wall",
+      "-I/usr/local/include/freetype2",
+      "-I/usr/include/libpng16",
+      "-I/usr/include/harfbuzz",
+      "-I/usr/include/glib-2.0",
+      "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
+      "-o",
+      "taskbar",
+      "../fontbmp/fontbmp.c"
+    ],
+    "directory": "/home/kivah/main/projects/c-folder/taskbar",
+    "file": "/home/kivah/main/projects/c-folder/fontbmp/fontbmp.c",
+    "output": "/home/kivah/main/projects/c-folder/taskbar/taskbar"
+  }
+]
