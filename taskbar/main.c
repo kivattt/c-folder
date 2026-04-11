@@ -26,7 +26,8 @@ struct BarMonitor {
     struct Buffer buffers[2];
     int current;
 
-    int width, height;
+    int width, height;      // surface coords
+    int scale;              // integer scale (1,2,3...)
     int configured;
 
     struct wl_callback *frame_cb;
@@ -51,7 +52,6 @@ static int current_x = 0;
 static int current_y = 0;
 
 /* ================= SHM ================= */
-
 static int create_shm_file(size_t size) {
     char name[] = "/tmp/taskbar-XXXXXX";
     int fd = mkstemp(name);
@@ -94,6 +94,31 @@ static void create_buffer(struct Buffer *buf, int width, int height) {
     buf->busy = 0;
     wl_buffer_add_listener(buf->wl_buf, &buffer_listener, buf);
 }
+
+/* ================= OUTPUT (SCALE) ================= */
+
+static void output_scale(void *data, struct wl_output *output, int32_t scale) {
+    struct BarMonitor *b = data;
+    if (scale < 1) scale = 1;
+    b->scale = scale;
+}
+
+static void output_geometry(void *data, struct wl_output *o,
+    int32_t x, int32_t y, int32_t pw, int32_t ph,
+    int32_t subpixel, const char *make,
+    const char *model, int32_t transform) {}
+
+static void output_mode(void *data, struct wl_output *o,
+    uint32_t flags, int32_t w, int32_t h, int32_t refresh) {}
+
+static void output_done(void *data, struct wl_output *o) {}
+
+static const struct wl_output_listener output_listener = {
+    .geometry = output_geometry,
+    .mode = output_mode,
+    .done = output_done,
+    .scale = output_scale,
+};
 
 /* ================= INPUT ================= */
 
@@ -194,23 +219,21 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
 
     if (!b->configured) return;
 
-    struct Buffer *next =
-        &b->buffers[(b->current + 1) % 2];
-
+    struct Buffer *next = &b->buffers[(b->current + 1) % 2];
     if (next->busy) return;
 
     int index = b - bars;
 
-    taskbar_draw(taskbar, index,
-        next->data, b->width, b->height, 1.0);
+    int bw = b->width * b->scale;
+    int bh = b->height * b->scale;
+
+    taskbar_draw(taskbar, index, next->data, bw, bh, (float)b->scale);
 
     wl_surface_attach(b->surface, next->wl_buf, 0, 0);
-    wl_surface_damage(b->surface, 0, 0, b->width, b->height);
+    wl_surface_damage(b->surface, 0, 0, bw, bh);
 
     b->frame_cb = wl_surface_frame(b->surface);
-    static const struct wl_callback_listener listener = {
-        .done = frame_done
-    };
+    static const struct wl_callback_listener listener = { .done = frame_done };
     wl_callback_add_listener(b->frame_cb, &listener, b);
 
     wl_surface_commit(b->surface);
@@ -263,13 +286,18 @@ static void layer_configure(void *data,
     b->width = width;
     b->height = height;
 
+    wl_surface_set_buffer_scale(b->surface, b->scale);
+
+    int bw = width * b->scale;
+    int bh = height * b->scale;
+
     struct wl_region *region = wl_compositor_create_region(compositor);
     wl_region_add(region, 0, 0, width, height);
     wl_surface_set_input_region(b->surface, region);
     wl_region_destroy(region);
 
-    create_buffer(&b->buffers[0], width, height);
-    create_buffer(&b->buffers[1], width, height);
+    create_buffer(&b->buffers[0], bw, bh);
+    create_buffer(&b->buffers[1], bw, bh);
 
     b->current = 0;
     b->configured = 1;
@@ -277,15 +305,13 @@ static void layer_configure(void *data,
     struct Buffer *buf = &b->buffers[0];
     int index = b - bars;
 
-    taskbar_draw(taskbar, index, buf->data, width, height, 1.0);
+    taskbar_draw(taskbar, index, buf->data, bw, bh, (float)b->scale);
 
     wl_surface_attach(b->surface, buf->wl_buf, 0, 0);
-    wl_surface_damage(b->surface, 0, 0, width, height);
+    wl_surface_damage(b->surface, 0, 0, bw, bh);
 
     b->frame_cb = wl_surface_frame(b->surface);
-    static const struct wl_callback_listener listener = {
-        .done = frame_done
-    };
+    static const struct wl_callback_listener listener = { .done = frame_done };
     wl_callback_add_listener(b->frame_cb, &listener, b);
 
     wl_surface_commit(b->surface);
@@ -369,8 +395,12 @@ static void registry_add(void *data, struct wl_registry *reg,
         struct BarMonitor *b = &bars[n_monitors++];
         memset(b, 0, sizeof(*b));
 
+        b->scale = 1;
+
         b->output = wl_registry_bind(reg, name,
-            &wl_output_interface, 1);
+            &wl_output_interface, 2);
+
+        wl_output_add_listener(b->output, &output_listener, b);
     }
 }
 
@@ -382,7 +412,6 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = registry_remove,
 };
 
-/* ================= MAIN ================= */
 int main() {
     display = wl_display_connect(NULL);
     if (!display) return 1;
@@ -408,6 +437,8 @@ int main() {
     while (1) {
         wl_display_dispatch(display);
     }
+
+	taskbar_deinitialize(taskbar);
 
     return 0;
 }

@@ -4,10 +4,6 @@
 #include <stdlib.h>
 #include "../sw-render/sw-render.h"
 
-struct Taskbar {
-	// TODO
-};
-
 enum TaskbarEventType {
 	TB_None = 0,
 	TB_MouseButton = 1,
@@ -18,6 +14,10 @@ struct TaskbarEvent {
 	enum TaskbarEventType type;
 	int mouse_x;
 	int mouse_y;
+};
+
+struct Taskbar {
+	struct TaskbarEvent last_event;
 };
 
 struct Taskbar *taskbar_initialize();
