@@ -1,3 +1,5 @@
 ## taskbar
 
-Work-in-progress taskbar for swaywm (using X11 library because Wayland API can go fuck itself)
+Work-in-progress taskbar for swaywm
+
+The wayland API stuff in `main.c` was all written by ChatGPT because the Wayland API is annoying
