@@ -10,7 +10,8 @@ struct Taskbar {
 
 enum TaskbarEventType {
 	TB_None = 0,
-	TB_MouseButton,
+	TB_MouseButton = 1,
+	TB_MouseMoved = 2,
 };
 
 struct TaskbarEvent {

@@ -60,7 +60,7 @@ int main() {
             XChangeWindowAttributes(dpy, win, CWOverrideRedirect, &attrs);
 
             XMapWindow(dpy, win);
-            XSelectInput(dpy, win, ButtonPressMask | ExposureMask);
+            XSelectInput(dpy, win, ExposureMask | ButtonPressMask | PointerMotionMask);
 
 			bars[n_monitors] = (struct BarMonitor){
 				.window = win,
@@ -105,6 +105,8 @@ int main() {
 					struct TaskbarEvent e;
 					if (ev.type == ButtonPress) {
 						e.type = TB_MouseButton;
+					} else if (ev.type == MotionNotify) {
+						e.type = TB_MouseMoved;
 					}
 					e.mouse_x = ev.xbutton.x;
 					e.mouse_y = ev.xbutton.y;

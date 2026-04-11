@@ -10,7 +10,7 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 }
 
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e) {
-	printf("input:\n");
+	printf("input on monitor %i (type: %i):\n", monitor_index, e.type);
 	printf("\tmouse_x = %i\n", e.mouse_x);
 	printf("\tmouse_y = %i\n", e.mouse_y);
 }
