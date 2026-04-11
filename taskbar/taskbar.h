@@ -6,8 +6,13 @@
 
 enum TaskbarEventType {
 	TB_None = 0,
-	TB_MouseButton = 1,
-	TB_MouseMoved = 2,
+	TB_MouseMoved = 1,
+
+	TB_Mouse1Pressed = 2,
+	TB_Mouse1Released = 3,
+
+	TB_Mouse2Pressed = 4,
+	TB_Mouse2Released = 5,
 };
 
 struct TaskbarEvent {

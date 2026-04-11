@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <linux/input.h>
 
 #include "protocols/wlr-layer-shell-client-protocol.h"
 #include "taskbar.h"
@@ -178,8 +179,23 @@ static void pointer_button(void *data, struct wl_pointer *p,
 
     int index = b - bars;
 
+	enum TaskbarEventType type = TB_None;
+	if (button == BTN_LEFT) {
+		if (state == 1) {
+			type = TB_Mouse1Pressed;
+		} else if (state == 0) {
+			type = TB_Mouse1Released;
+		}
+	} else if (button == BTN_RIGHT) {
+		if (state == 1) {
+			type = TB_Mouse2Pressed;
+		} else if (state == 0) {
+			type = TB_Mouse2Released;
+		}
+	}
+
     struct TaskbarEvent e = {
-        .type = TB_MouseButton,
+        .type = type,
         .mouse_x = current_x,
         .mouse_y = current_y,
     };
