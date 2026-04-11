@@ -23,4 +23,4 @@ struct TaskbarEvent {
 struct Taskbar *taskbar_initialize();
 void taskbar_deinitialize(struct Taskbar *tb);
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e);
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height);
+void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale);

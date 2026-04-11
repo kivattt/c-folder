@@ -202,7 +202,7 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
     int index = b - bars;
 
     taskbar_draw(taskbar, index,
-        next->data, b->width, b->height);
+        next->data, b->width, b->height, 1.0);
 
     wl_surface_attach(b->surface, next->wl_buf, 0, 0);
     wl_surface_damage(b->surface, 0, 0, b->width, b->height);
@@ -277,7 +277,7 @@ static void layer_configure(void *data,
     struct Buffer *buf = &b->buffers[0];
     int index = b - bars;
 
-    taskbar_draw(taskbar, index, buf->data, width, height);
+    taskbar_draw(taskbar, index, buf->data, width, height, 1.0);
 
     wl_surface_attach(b->surface, buf->wl_buf, 0, 0);
     wl_surface_damage(b->surface, 0, 0, width, height);

@@ -15,7 +15,7 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct Ta
 	printf("\tmouse_y = %i\n", e.mouse_y);
 }
 
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height) {
+void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale) {
 	for (int i = 0; i < width * height; i++) {
 		framebuffer[i] = swr_color_to_argb(42, 44, 46);
 	}
