@@ -428,7 +428,10 @@ static const struct wl_registry_listener registry_listener = {
 
 int main() {
 	display = wl_display_connect(NULL);
-	if (!display) return 1;
+	if (!display) {
+		printf("Unable to connect to Wayland\n");
+		return 1;
+	}
 
 	registry = wl_display_get_registry(display);
 	wl_registry_add_listener(registry,
