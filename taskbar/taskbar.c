@@ -67,7 +67,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	}
 
 	swr_draw_image_argb(framebuffer, width, height, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0, 0);
-	swr_draw_text(framebuffer, width, height, tb->clock, &tb->font, TEXT_COLOR, width - 95 * scale, (tb->font_size + 0) * scale);
+	swr_draw_text(framebuffer, width, height, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
 
 	tb->last_scale = scale;
 }
