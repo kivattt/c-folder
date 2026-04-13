@@ -244,8 +244,10 @@ float swr_sdf_rect_outline(float x, float y, struct FloatRect rect, float radius
 	return 1.0 - MAX(0.0, MIN(1.0, result));
 }
 
-void swr_draw_rectangle_rounded_outline(uint32_t *dest, int dest_width, int dest_height, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward) {
-	struct Rect buffer_rect = {.x = 0, .y = 0, .w = dest_width, .h = dest_height};
+void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward) {
+	swr_crash_if_dest_is_null(swr);
+
+	struct Rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
 
 	struct Rect visible = swr_rect_intersect(buffer_rect, rect);
 
@@ -276,9 +278,9 @@ void swr_draw_rectangle_rounded_outline(uint32_t *dest, int dest_width, int dest
 			float alpha = color_alpha * swr_sdf_rect_outline(sample_x, sample_y, float_rect, radius, thickness_inward, thickness_outward);
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
-			int dest_index = sample_y * dest_width + sample_x;
-			uint32_t output_color = swr_alpha_blend(dest[dest_index], the_color);
-			dest[dest_index] = output_color;
+			int dest_index = sample_y * swr->width + sample_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], the_color);
+			swr->dest[dest_index] = output_color;
 		}
 	}
 }

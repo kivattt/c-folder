@@ -142,6 +142,8 @@ int main() {
 			.h = 40.0,
 		};
 		swr_draw_rectangle_rounded(&swr, r, 0xFFFFFFFF, 18.0);
+		r.x += 250;
+		swr_draw_rectangle_rounded_outline(&swr, r, 0xFFFFFFFF, 18.0, 1.0, 1.0);
 
 		cvk_draw(window, buffer, width, height);
 
