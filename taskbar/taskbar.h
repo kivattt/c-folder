@@ -35,6 +35,7 @@ struct TaskbarPerMonitorData {
 
 struct Taskbar {
 	// Global data
+	struct SWRender swr;
 	float last_scale;
 	struct TaskbarEvent last_event;
 

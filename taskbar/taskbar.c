@@ -9,12 +9,12 @@
 struct Taskbar *taskbar_initialize() {
 	struct Taskbar *tb = malloc(sizeof(struct Taskbar));
 	tb->last_scale = 1.0;
-
 	tb->font_size = 22;
 	tb->font_name = "assets/Inconsolata-Regular.ttf";
-
 	tb->font = fontbmp_initialize();
 	fontbmp_generate(&tb->font, tb->font_name, 24);
+
+	swr_initialize(&tb->swr);
 
 	int channels;
 	tb->background_bitmap = stbi_load("assets/background.png", &tb->background_width, &tb->background_height, &channels, 4);
@@ -68,8 +68,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		printf("Milliseconds since epoch: %ld\n", milliseconds);
 	}*/
 
-	if (data->frame_number % 240 == 0) {
-		printf("HIT on monitor %i\n", monitor_index);
+	if (data->frame_number % 30 == 0) {
 		clock_string(tb->clock);
 	}
 
@@ -82,8 +81,11 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		framebuffer[i] = BACKGROUND_COLOR;
 	}
 
+	swr_set_dest(&tb->swr, framebuffer, width, height);
 	swr_draw_image_argb(framebuffer, width, height, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0, 0);
-	swr_draw_text(framebuffer, width, height, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
+	swr_draw_text(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
+
+	swr_draw_text(&tb->swr, "hello world!", &tb->font, TEXT_COLOR, 0, 0);
 
 	tb->last_scale = scale;
 }

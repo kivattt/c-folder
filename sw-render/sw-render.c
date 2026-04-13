@@ -15,10 +15,18 @@ void swr_initialize(struct SWRender *swr) {
 	memset(swr, 0, sizeof(struct SWRender));
 }
 
-void swr_set_buffer(struct SWRender *swr, uint32_t *dest, int width, int height) {
+void swr_set_dest(struct SWRender *swr, uint32_t *dest, int width, int height) {
 	swr->dest = dest;
 	swr->width = width;
 	swr->height = height;
+}
+
+// FIXME: Output to stderr
+void swr_crash_if_dest_is_null(struct SWRender *swr) {
+	if (swr->dest == NULL) {
+		printf("sw-render: dest was NULL, did you forget to call swr_set_dest() ?\n");
+		assert(0);
+	}
 }
 
 // Returns the intersection of two rectangles.
@@ -133,6 +141,8 @@ int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color,
 
 // text_color is an 8-bit ARGB value.
 void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y) {
+	swr_crash_if_dest_is_null(swr);
+
 	int pen_x = 0;
 	int pen_y = 0;
 

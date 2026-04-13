@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
@@ -23,11 +24,12 @@ struct FloatRect {
 };
 
 void swr_initialize(struct SWRender *swr);
-void swr_set_buffer(struct SWRender *swr, uint32_t *buffer, int width, int height);
+void swr_set_dest(struct SWRender *swr, uint32_t *buffer, int width, int height);
 
 void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);
 
 // Internal functions
+void swr_crash_if_dest_is_null(struct SWRender *swr);
 int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
 
 ///////////////////////

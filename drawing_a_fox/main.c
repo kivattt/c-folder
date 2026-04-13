@@ -47,6 +47,9 @@ void handle_input(GLFWwindow *window, int key, int scancode, int action, int mod
 }
 
 int main() {
+	struct SWRender swr;
+	swr_initialize(&swr);
+
 	int width = 1280;
 	int height = 720;
 	assert(glfwInit());
@@ -66,6 +69,8 @@ int main() {
 	int bufferHeight = height;
 	void* buffer = malloc(4 * bufferWidth * bufferHeight);
 	assert(buffer);
+
+	swr_set_dest(&swr, buffer, bufferWidth, bufferHeight);
 
 	assert(cvk_init(window));
 
@@ -92,7 +97,7 @@ int main() {
 
 	int frame_number = 0;
 	while (!glfwWindowShouldClose(window) && running) {
-		double delta_sec = deltatime_start_frame();
+		deltatime_start_frame();
 		//printf("Delta: %f\n", delta_sec);
 		printf("FPS: %f\n", deltatime_fps());
 
@@ -118,16 +123,16 @@ int main() {
 			((uint32_t*)buffer)[i] = color;
 		}
 
-		swr_draw_text(buffer, bufferWidth, bufferHeight, "awa~ polska #1 norge nummer en (1). polska #1", &font, 0xFFFFFFFF, 5, 20);
+		swr_draw_text(&swr, "awa~ polska #1 norge nummer en (1). polska #1", &font, 0xFFFFFFFF, 5, 20);
 
 		for (int j = 0; j < 400; j += 100) {
-			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j);
+			swr_draw_text(&swr, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j);
 		}
 
 		swr_draw_image_argb(buffer, bufferWidth, bufferHeight, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
 
 		for (int j = 0; j < 400; j += 100) {
-			swr_draw_text(buffer, bufferWidth, bufferHeight, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j + 400);
+			swr_draw_text(&swr, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j + 400);
 		}
 
 		struct Rect r = {
