@@ -70,7 +70,7 @@ int main() {
 	void* buffer = malloc(4 * bufferWidth * bufferHeight);
 	assert(buffer);
 
-	swr_set_dest(&swr, buffer, bufferWidth, bufferHeight);
+	swr_set_output(&swr, buffer, bufferWidth, bufferHeight);
 
 	assert(cvk_init(window));
 

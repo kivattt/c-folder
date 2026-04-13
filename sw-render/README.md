@@ -11,7 +11,7 @@ SWRender r;
 swr_initialize(&r);
 
 // Give it a pointer to your framebuffer, along with its width & height.
-swr_set_dest(&r, (uint32_t*)framebuffer, width, height);
+swr_set_output(&r, (uint32_t*)framebuffer, width, height);
 
 // Draw something!
 for {

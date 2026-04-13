@@ -24,7 +24,7 @@ struct FloatRect {
 };
 
 void swr_initialize(struct SWRender *swr);
-void swr_set_dest(struct SWRender *swr, uint32_t *buffer, int width, int height);
+void swr_set_output(struct SWRender *swr, uint32_t *buffer, int width, int height);
 
 void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);
 void swr_draw_image_argb(struct SWRender *swr, uint32_t *img, int img_width, int img_height, int img_x, int img_y);
