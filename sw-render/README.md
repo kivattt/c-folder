@@ -21,8 +21,8 @@ while (1) {
     swr_draw_text(
         &r,
         "hello world!",
-        swr_rgba(255, 255, 255, 255),
         22,
+        swr_rgba(255, 255, 255, 255),
         0, 0
     );
 }
