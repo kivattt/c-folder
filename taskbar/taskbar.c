@@ -55,7 +55,23 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		return;
 	}
 
-	clock_string(tb->clock);
+	assert(monitor_index >= 0);
+	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	struct TaskbarPerMonitorData *data = &tb->per_monitor_data[monitor_index];
+	data->frame_number += 1;
+
+	/*if (monitor_index == 1) {
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		long milliseconds = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+		printf("Milliseconds since epoch: %ld\n", milliseconds);
+	}*/
+
+	if (data->frame_number % 240 == 0) {
+		printf("HIT on monitor %i\n", monitor_index);
+		clock_string(tb->clock);
+	}
 
 	// Set the font size if scale changed
 	if (scale != tb->last_scale) {

@@ -434,8 +434,7 @@ int main() {
 	}
 
 	registry = wl_display_get_registry(display);
-	wl_registry_add_listener(registry,
-		&registry_listener, NULL);
+	wl_registry_add_listener(registry, &registry_listener, NULL);
 
 	wl_display_roundtrip(display);
 
@@ -444,8 +443,11 @@ int main() {
 		return 1;
 	}
 
-	for (int i = 0; i < n_monitors; i++)
+	printf("%d monitors\n", n_monitors);
+
+	for (int i = 0; i < n_monitors; i++) {
 		create_bar(&bars[i]);
+	}
 
 	wl_display_roundtrip(display);
 

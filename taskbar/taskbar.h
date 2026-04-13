@@ -8,6 +8,9 @@
 
 #include "stb_image.h"
 
+// Max amount of taskbars (screens)
+#define TASKBAR_MAX_MONITORS 64
+
 enum TaskbarEventType {
 	TB_None = 0,
 	TB_MouseMoved = 1,
@@ -25,9 +28,16 @@ struct TaskbarEvent {
 	int mouse_y;
 };
 
+// Per-monitor data
+struct TaskbarPerMonitorData {
+	unsigned long long frame_number;
+};
+
 struct Taskbar {
+	// Global data
 	float last_scale;
 	struct TaskbarEvent last_event;
+
 	struct Font font;
 	char *font_name;
 	int font_size;
@@ -36,6 +46,9 @@ struct Taskbar {
 	unsigned char *background_bitmap;
 	int background_width;
 	int background_height;
+
+	// Per-monitor data
+	struct TaskbarPerMonitorData per_monitor_data[TASKBAR_MAX_MONITORS];
 };
 
 struct Taskbar *taskbar_initialize();
