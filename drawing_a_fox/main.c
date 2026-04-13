@@ -93,7 +93,7 @@ int main() {
 	}
 
 	//uint32_t color = swr_color_to_argb(0, 127, 178);
-	uint32_t color = swr_color_to_argb(0, 0, 0);
+	uint32_t color = swr_rgb(0, 0, 0);
 
 	int frame_number = 0;
 	while (!glfwWindowShouldClose(window) && running) {

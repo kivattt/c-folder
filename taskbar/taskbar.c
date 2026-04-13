@@ -3,8 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define BACKGROUND_COLOR swr_color_to_argb(42, 44, 46)
-#define TEXT_COLOR swr_color_to_argb(220, 220, 220)
+#define BACKGROUND_COLOR swr_rgb(42, 44, 46)
+#define TEXT_COLOR swr_rgb(220, 220, 220)
 
 struct Taskbar *taskbar_initialize() {
 	struct Taskbar *tb = malloc(sizeof(struct Taskbar));

@@ -10,7 +10,7 @@
 #include "../fontbmp/fontbmp.h"
 
 struct SWRender {
-	uint32_t *dest; // Destination image
+	uint32_t *dest; // Destination image (8-bit ARGB)
 	int width;      // Destination image width
 	int height;     // Destination image height
 };
@@ -27,8 +27,9 @@ struct FloatRect {
 void swr_initialize(struct SWRender *swr);
 void swr_set_output(struct SWRender *swr, uint32_t *buffer, int width, int height);
 
-// Color functions
-uint32_t swr_color_to_argb(uint8_t r, uint8_t g, uint8_t b);
+// Color functions. These return ARGB values
+uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
 // Drawing functions
 void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);

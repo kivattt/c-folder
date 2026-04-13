@@ -47,8 +47,12 @@ struct Rect swr_rect_intersect(struct Rect a, struct Rect b) {
 	return out;
 }
 
-uint32_t swr_color_to_argb(uint8_t r, uint8_t g, uint8_t b) {
-	return 0xFF000000 | r << 16 | g << 8 | b;
+uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	return a << 24 | r << 16 | g << 8 | b;
+}
+
+uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
+	return swr_rgba(r, g, b, 0xff);
 }
 
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
