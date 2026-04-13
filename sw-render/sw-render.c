@@ -82,8 +82,10 @@ void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	}
 }
 
-void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
+void swr_draw_image_argb(struct SWRender *swr, uint32_t *img, int img_width, int img_height, int img_x, int img_y) {
+	swr_crash_if_dest_is_null(swr);
+
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = swr->width, .h = swr->height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img_width,  .h = img_height};
 
 	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
@@ -95,11 +97,11 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 		int img_sample_y = y + y_offset;
 		int img_index = img_sample_y * img_width + img_sample_x;
 
-		int dest_index = (visible.y+y) * dest_width + (visible.x);
+		int dest_index = (visible.y+y) * swr->width + (visible.x);
 		//memcpy(dest+dest_index, img+img_index, visible.w * 4);
 
 		for (int x = 0; x < visible.w; x++) {
-			dest[dest_index + x] = swr_alpha_blend(dest[dest_index + x], img[img_index + x]);
+			swr->dest[dest_index + x] = swr_alpha_blend(swr->dest[dest_index + x], img[img_index + x]);
 		}
 	}
 }
