@@ -11,6 +11,16 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+void swr_initialize(struct SWRender *swr) {
+	memset(swr, 0, sizeof(struct SWRender));
+}
+
+void swr_set_buffer(struct SWRender *swr, uint32_t *dest, int width, int height) {
+	swr->dest = dest;
+	swr->width = width;
+	swr->height = height;
+}
+
 // Returns the intersection of two rectangles.
 // If there is no intersection, it returns an empty rectangle with x=0, y=0, w=0, h=0
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b) {
@@ -88,8 +98,8 @@ void swr_draw_image_argb(uint32_t *dest, int dest_width, int dest_height, uint32
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
 // Returns non-zero if it would draw outside of the screen (nothing to draw)
-int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = dest_width, .h = dest_height};
+int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
+	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = swr->width, .h = swr->height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width,  .h = img.rows};
 
 	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
@@ -109,12 +119,12 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 			assert(img.pitch == img.width);
 			int img_index = img_sample_y * img.pitch + img_sample_x;
 
-			int buffer_index = (visible.y+y) * dest_width + (visible.x+x);
+			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
 			uint8_t alpha = (float)(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
-			uint32_t img_color = swr_alpha_blend(dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF));
+			uint32_t img_color = swr_alpha_blend(swr->dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF));
 
 			// Set the pixel
-			dest[buffer_index] = img_color;
+			swr->dest[buffer_index] = img_color;
 		}
 	}
 
@@ -122,7 +132,7 @@ int swr_draw_glyph(uint32_t *dest, int dest_width, int dest_height, struct Glyph
 }
 
 // text_color is an 8-bit ARGB value.
-void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y) {
+void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y) {
 	int pen_x = 0;
 	int pen_y = 0;
 
@@ -143,7 +153,7 @@ void swr_draw_text(uint32_t *dest, int dest_width, int dest_height, const char *
 		int x_pos = x + pen_x + glyph.bitmap_left;
 		int y_pos = y + pen_y - glyph.bitmap_top;
 
-		if (swr_draw_glyph(dest, dest_width, dest_height, glyph, text_color, x_pos, y_pos)) {
+		if (swr_draw_glyph(swr, glyph, text_color, x_pos, y_pos)) {
 			// Nothing to draw beyond this line.
 			// FIXME: Skip to the next line. Also return if we drew the last visible line.
 			continue;
