@@ -1,1 +1,1 @@
-gcc -g -O0 test.c ../sw-render.c ../../fontbmp/fontbmp.c -o test -I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglfw -lvulkan -lm -lfreetype
+gcc -g -O0 test.c ../sw-render.c ../font.c ../../fontbmp/fontbmp.c -o test -I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglfw -lvulkan -lm -lfreetype

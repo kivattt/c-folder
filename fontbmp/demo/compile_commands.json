@@ -14,9 +14,9 @@
       "demo",
       "demo.c"
     ],
-    "directory": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo",
-    "file": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo.c",
-    "output": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo"
+    "directory": "/home/kivah/main/projects/c-folder/fontbmp/demo",
+    "file": "/home/kivah/main/projects/c-folder/fontbmp/demo/demo.c",
+    "output": "/home/kivah/main/projects/c-folder/fontbmp/demo/demo"
   },
   {
     "arguments": [
@@ -31,10 +31,10 @@
       "-I/usr/lib/x86_64-linux-gnu/glib-2.0/include",
       "-o",
       "demo",
-      "../renamethis.c"
+      "../fontbmp.c"
     ],
-    "directory": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo",
-    "file": "/home/kivah/main/projects/c-folder/font_atlas_freetype/renamethis.c",
-    "output": "/home/kivah/main/projects/c-folder/font_atlas_freetype/demo/demo"
+    "directory": "/home/kivah/main/projects/c-folder/fontbmp/demo",
+    "file": "/home/kivah/main/projects/c-folder/fontbmp/fontbmp.c",
+    "output": "/home/kivah/main/projects/c-folder/fontbmp/demo/demo"
   }
 ]

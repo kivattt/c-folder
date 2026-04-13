@@ -83,9 +83,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 	swr_set_output(&tb->swr, framebuffer, width, height);
 	swr_draw_image_argb(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0, 0);
-	swr_draw_text(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
-
-	swr_draw_text(&tb->swr, "hello world!", &tb->font, TEXT_COLOR, 0, 0);
+	swr_draw_text(&tb->swr, "hello world!", tb->font_size, TEXT_COLOR, 20, 20);
+	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
 
 	tb->last_scale = scale;
 }

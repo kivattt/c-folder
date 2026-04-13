@@ -1,7 +1,14 @@
 #pragma once
 
 #include <ft2build.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <assert.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include FT_FREETYPE_H
 
 struct GlyphBitmap {
@@ -32,3 +39,6 @@ void fontbmp_deinitialize(struct Font font_bitmaps);
 
 // font_height_pixels is not actually a measure in pixels, its some Freetype2 bs. A bitmap height can go beyond what you specify.
 FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, const int font_height_pixels);
+
+// font_height_pixels is not actually a measure in pixels, its some Freetype2 bs. A bitmap height can go beyond what you specify.
+FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned char *font_data, signed long font_data_size, const int font_height_pixels);

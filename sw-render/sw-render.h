@@ -8,11 +8,14 @@
 #include <assert.h>
 
 #include "../fontbmp/fontbmp.h"
+#include "font.h"
 
 struct SWRender {
 	uint32_t *dest; // Destination image (8-bit ARGB)
 	int width;      // Destination image width
 	int height;     // Destination image height
+
+	struct Font default_font;
 };
 
 struct Rect {
@@ -32,7 +35,8 @@ uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
 // Drawing functions
-void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y);
+void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y);
+void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y);
 void swr_draw_image_argb(struct SWRender *swr, uint32_t *img, int img_width, int img_height, int img_x, int img_y);
 void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t color, float radius);
 void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);

@@ -13,6 +13,12 @@
 
 void swr_initialize(struct SWRender *swr) {
 	memset(swr, 0, sizeof(struct SWRender));
+
+	swr->default_font = fontbmp_initialize();
+}
+
+void swr_deinitialize(struct SWRender *swr) {
+	fontbmp_deinitialize(swr->default_font);
 }
 
 void swr_set_output(struct SWRender *swr, uint32_t *dest, int width, int height) {
@@ -145,8 +151,18 @@ int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color,
 	return 0;
 }
 
+void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y) {
+	int err = fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
+	if (err) {
+		printf("swr_draw_text: A call to fontbmp_generate_from_memory errored with code %i\n", err);
+		assert(0);
+	}
+
+	swr_draw_text_ex(swr, text, &swr->default_font, color, x, y);
+}
+
 // text_color is an 8-bit ARGB value.
-void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t text_color, int x, int y) {
+void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y) {
 	swr_crash_if_dest_is_null(swr);
 
 	int pen_x = 0;
@@ -169,7 +185,7 @@ void swr_draw_text(struct SWRender *swr, const char *text, struct Font *font_bit
 		int x_pos = x + pen_x + glyph.bitmap_left;
 		int y_pos = y + pen_y - glyph.bitmap_top;
 
-		if (swr_draw_glyph(swr, glyph, text_color, x_pos, y_pos)) {
+		if (swr_draw_glyph(swr, glyph, color, x_pos, y_pos)) {
 			// Nothing to draw beyond this line.
 			// FIXME: Skip to the next line. Also return if we drew the last visible line.
 			continue;

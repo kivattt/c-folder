@@ -1,10 +1,3 @@
-#include <assert.h>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include <stdint.h>
-#include <math.h>
-
 #include "fontbmp.h"
 
 struct Font fontbmp_initialize() {
@@ -22,6 +15,34 @@ void fontbmp_deinitialize(struct Font font_bitmaps) {
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
 FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, const int font_height_pixels) {
+	int fd = open(font_filename, O_RDONLY);
+	if (fd == -1) {
+		printf("fontbmp_generate: Failed to open font file: %s\n", font_filename);
+		return 1;
+	}
+
+	struct stat st;
+	if (fstat(fd, &st) == -1) {
+		printf("fontbmp_generate: Failed to stat font file: %s\n", font_filename);
+		return 1;
+	}
+
+	FT_Long font_data_size = st.st_size;
+	unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
+	FT_Error err = fontbmp_generate_from_memory(font_bitmaps, font_data, font_data_size, font_height_pixels);
+	if (err) {
+		return err;
+	}
+
+	close(fd);
+	munmap(font_data, font_data_size);
+
+	return 0;
+}
+
+// Frees the font_bitmaps.bitmap_data before re-allocating it.
+// Returns non-zero on failure
+FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels) {
 	FT_Library library;
 	FT_Error error = 0;
 	FT_Face face;
@@ -32,7 +53,7 @@ FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, 
 		goto done;
 	}
 
-	error = FT_New_Face(library, font_filename, 0, &face);
+	error = FT_New_Memory_Face(library, font_data, font_data_size, 0, &face);
 	if (error) {
 		goto done;
 	}
