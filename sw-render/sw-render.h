@@ -16,6 +16,7 @@ struct SWRender {
 	int height;     // Destination image height
 
 	struct Font default_font;
+	uint32_t last_default_font_size;
 };
 
 struct Rect {
@@ -39,7 +40,7 @@ void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32
 void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y);
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
-void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, int x, int y);
+void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
 
 void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t color, float radius);
 void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);

@@ -13,6 +13,7 @@
 
 void swr_initialize(struct SWRender *swr) {
 	memset(swr, 0, sizeof(struct SWRender));
+	swr->last_default_font_size = -1;
 
 	swr->default_font = fontbmp_initialize();
 }
@@ -75,6 +76,11 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 
 // 8-bit ARGB colors
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
+	// Fast path
+	if (src >> 24 == 0xff) {
+		return src;
+	}
+
 	dest |= 0xFF000000;
 
 	uint8_t a = src >> 24;
@@ -86,6 +92,11 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 }
 
 uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
+	// Fast path
+	if (tint == 0xFFFFFFFF) {
+		return color;
+	}
+
 	uint8_t a = ((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255;
 	uint8_t r = ((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255;
 	uint8_t g = ((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255;
@@ -102,30 +113,72 @@ void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 }
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y) {
-	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, x, y);
+	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, 1.0, x, y);
 }
 
-void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, int x, int y) {
+void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y) {
 	swr_crash_if_dest_is_null(swr);
 
-	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = swr->width, .h = swr->height};
-	struct Rect img_rect =    {.x = x, .y = y, .w = width,  .h = height};
+	if (width <= 0 || height <= 0) {
+		return;
+	}
 
-	struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
-	int x_offset = -MIN(0, x);
-	int y_offset = -MIN(0, y);
+	if (scale == 1.0) {
+		struct Rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+		struct Rect img_rect =    {.x = x, .y = y, .w = width,      .h = height};
 
-	for (int dy = 0; dy < visible.h; dy++) {
-		int img_sample_x = x_offset;
-		int img_sample_y = dy + y_offset;
-		int img_index = img_sample_y * width + img_sample_x;
+		struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
+		int x_offset = -MIN(0, x);
+		int y_offset = -MIN(0, y);
 
-		int dest_index = (visible.y+dy) * swr->width + (visible.x);
-		//memcpy(dest+dest_index, img+img_index, visible.w * 4);
+		for (int dy = 0; dy < visible.h; dy++) {
+			int img_sample_x = x_offset;
+			int img_sample_y = dy + y_offset;
+			int img_index = img_sample_y * width + img_sample_x;
 
-		for (int dx = 0; dx < visible.w; dx++) {
-			uint32_t img_color = swr_color_tint(img_argb[img_index + dx], color_tint);
-			swr->dest[dest_index + dx] = swr_alpha_blend(swr->dest[dest_index + dx], img_color);
+			int dest_index = (visible.y+dy) * swr->width + visible.x;
+
+			for (int dx = 0; dx < visible.w; dx++) {
+				// Sample the image pixel
+				uint32_t img_color = swr_color_tint(img_argb[img_index + dx], color_tint);
+
+				// Set the output pixel, with alpha-blending
+				swr->dest[dest_index + dx] = swr_alpha_blend(swr->dest[dest_index + dx], img_color);
+			}
+		}
+	} else {
+		scale = MAX(0.0, scale);
+		int width_scaled = width * scale;
+		int height_scaled = height * scale;
+
+		// To guard against a divide-by-zero later.
+		if (width_scaled <= 1 || height_scaled <= 1) {
+			return;
+		}
+
+		struct Rect buffer_rect = {.x = 0, .y = 0, .w = swr->width,    .h = swr->height};
+		struct Rect img_rect =    {.x = x, .y = y, .w = width_scaled, .h = height_scaled};
+
+		struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
+
+		int x_offset = -MIN(0, x);
+		int y_offset = -MIN(0, y);
+
+		for (int dy = 0; dy < visible.h; dy++) {
+			for (int dx = 0; dx < visible.w; dx++) {
+				int img_sample_x = (float)dx / (float)(width_scaled - 1) * (width - 1);
+				int img_sample_y = (float)dy / (float)(height_scaled - 1) * (height - 1);
+				assert(img_sample_x >= 0 && img_sample_y >= 0);
+				assert(img_sample_x < width && img_sample_y < height);
+
+				// Sample the image pixel
+				int img_index = img_sample_y * width + img_sample_x;
+				uint32_t img_color = swr_color_tint(img_argb[img_index], color_tint);
+
+				// Set the output pixel, with alpha-blending
+				int dest_index = (visible.y + dy) * swr->width + (visible.x + dx);
+				swr->dest[dest_index] = swr_alpha_blend(swr->dest[dest_index], img_color);
+			}
 		}
 	}
 }
@@ -166,10 +219,14 @@ int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color,
 }
 
 void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y) {
-	int err = fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
-	if (err) {
-		printf("swr_draw_text: A call to fontbmp_generate_from_memory errored with code %i\n", err);
-		assert(0);
+	if (size != swr->last_default_font_size) {
+		int err = fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
+		if (err) {
+			printf("swr_draw_text: A call to fontbmp_generate_from_memory errored with code %i\n", err);
+			assert(0);
+		}
+
+		swr->last_default_font_size = size;
 	}
 
 	swr_draw_text_ex(swr, text, &swr->default_font, color, x, y);
