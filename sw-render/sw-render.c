@@ -85,6 +85,15 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	return 0xFF000000 | r << 16 | g << 8 | b;
 }
 
+uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
+	uint8_t a = ((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255;
+	uint8_t r = ((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255;
+	uint8_t g = ((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255;
+	uint8_t b = ((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255;
+
+	return a << 24 | r << 16 | g << 8 | b;
+}
+
 // Converts an image from ABGR to ARGB in-place
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	for (int i = 0; i < length; i++) {
@@ -93,6 +102,10 @@ void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 }
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y) {
+	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, x, y);
+}
+
+void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, int x, int y) {
 	swr_crash_if_dest_is_null(swr);
 
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = swr->width, .h = swr->height};
@@ -111,7 +124,8 @@ void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int hei
 		//memcpy(dest+dest_index, img+img_index, visible.w * 4);
 
 		for (int dx = 0; dx < visible.w; dx++) {
-			swr->dest[dest_index + dx] = swr_alpha_blend(swr->dest[dest_index + dx], img_argb[img_index + dx]);
+			uint32_t img_color = swr_color_tint(img_argb[img_index + dx], color_tint);
+			swr->dest[dest_index + dx] = swr_alpha_blend(swr->dest[dest_index + dx], img_color);
 		}
 	}
 }
