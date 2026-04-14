@@ -36,7 +36,7 @@ uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
 // Drawing functions
-void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y);
+void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y);
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
