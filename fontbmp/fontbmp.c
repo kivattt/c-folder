@@ -143,7 +143,6 @@ FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned 
 		assert(pitch >= 0);
 		assert(width == pitch);
 
-		// If the pointer was the same as the last one, just index into the last one in glyph_bitmap_list
 		memcpy(&font_bitmaps->internal_bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
 		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
 			.width = width,
