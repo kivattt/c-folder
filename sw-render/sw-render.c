@@ -161,8 +161,9 @@ void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int 
 
 		struct Rect visible = swr_rect_intersect(buffer_rect, img_rect);
 
-		int x_offset = -MIN(0, x);
-		int y_offset = -MIN(0, y);
+		// FIXME: use these variables to correctly render when x < 0 or y < 0. We may have to divide these by scale.
+		//int x_offset = -MIN(0, x);
+		//int y_offset = -MIN(0, y);
 
 		for (int dy = 0; dy < visible.h; dy++) {
 			for (int dx = 0; dx < visible.w; dx++) {
