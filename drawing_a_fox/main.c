@@ -129,7 +129,7 @@ int main() {
 			swr_draw_text_ex(&swr, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j);
 		}
 
-		swr_draw_image_argb(&swr, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
+		swr_draw_image(&swr, (uint32_t*)guyImage, guyWidth, guyHeight, x, y);
 
 		for (int j = 0; j < 400; j += 100) {
 			swr_draw_text_ex(&swr, "\n\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox\nfox fox fox fox fox fox fox fox fox fox fox fox fox fox fox fox", &font, 0xFFFFFFFF, 200, j + 400);
