@@ -1,0 +1,1 @@
+gcc -g -O2 demo.c ../sw-render.c ../font.c ../../fontbmp/fontbmp.c -o demo -I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglfw -lvulkan -lm -lfreetype -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
