@@ -21,7 +21,7 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 		assert(0);
 	}
 
-	tb->filenames_buffer = malloc(2048);
+	tb->filenames_buffer = malloc(1024); // More than enough for our asset filenames (including assets_folder)
 
 	int filename_index = 0;
 	tb->font_name = &tb->filenames_buffer[filename_index];
@@ -48,6 +48,7 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 }
 
 void taskbar_deinitialize(struct Taskbar *tb) {
+	free(tb->filenames_buffer);
 	fontbmp_deinitialize(tb->font);
 	stbi_image_free(tb->background_bitmap);
 }
@@ -97,6 +98,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	swr_set_output(&tb->swr, framebuffer, width, height);
 	float max_scale = MAX((width / 1920.0f), (height / (float)bar_height_at_1x_scale));
 	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, max_scale, 0, 0);
+	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, swr_rgb(0,0,0), width - 97 * scale, (tb->font_size + 1) * scale + 1);
 	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
 
 	tb->last_scale = scale;
