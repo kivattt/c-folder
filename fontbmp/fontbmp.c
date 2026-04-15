@@ -15,6 +15,8 @@ void fontbmp_deinitialize(struct FontBMPFont font_bitmaps) {
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
 FT_Error fontbmp_generate(struct FontBMPFont *font_bitmaps, const char *font_filename, const int font_height_pixels) {
+	assert(font_bitmaps != NULL);
+
 	int fd = open(font_filename, O_RDONLY);
 	if (fd == -1) {
 		printf("fontbmp_generate: Failed to open font file: %s\n", font_filename);
@@ -43,6 +45,8 @@ FT_Error fontbmp_generate(struct FontBMPFont *font_bitmaps, const char *font_fil
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
 FT_Error fontbmp_generate_from_memory(struct FontBMPFont *font_bitmaps, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels) {
+	assert(font_bitmaps != NULL);
+
 	FT_Library library;
 	FT_Error error = 0;
 	FT_Face face;
