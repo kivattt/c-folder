@@ -12,6 +12,11 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 void swr_initialize(struct SWRender *swr) {
+	if (swr == NULL) {
+		printf("sw-render: swr_initialize called with a NULL pointer. Remember: your SWRender struct should be on the stack!\n");
+		assert(0);
+	}
+
 	memset(swr, 0, sizeof(struct SWRender));
 	swr->last_default_font_size = -1;
 
@@ -112,6 +117,12 @@ void swr_convert_image_abgr_to_argb(uint32_t *img, int length) {
 	}
 }
 
+// Converts an image from ARGB to ABGR in-place
+void swr_convert_image_argb_to_abgr(uint32_t *img, int length) {
+	// The conversion is two-way symmetrical
+	return swr_convert_image_abgr_to_argb(img, length);
+}
+
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y) {
 	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, 1.0, x, y);
 }
@@ -186,7 +197,7 @@ void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int 
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
 // Returns non-zero if it would draw outside of the screen (nothing to draw)
-int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color, int img_x, int img_y) {
+int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t color, int img_x, int img_y) {
 	struct Rect buffer_rect = {.x = 0,     .y = 0,     .w = swr->width, .h = swr->height};
 	struct Rect img_rect =    {.x = img_x, .y = img_y, .w = img.width,  .h = img.rows};
 
@@ -234,7 +245,7 @@ void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32
 }
 
 // text_color is an 8-bit ARGB value.
-void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y) {
+void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y) {
 	swr_crash_if_dest_is_null(swr);
 
 	int pen_x = 0;
@@ -243,7 +254,7 @@ void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_
 	for (int i = 0; i < strlen(text); i++) {
 		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
 
-		struct GlyphBitmap glyph = font_bitmaps->glyph_list[c];
+		struct FontBMPGlyphBitmap glyph = font_bitmaps->glyph_list[c];
 		if (glyph.bitmap_data == NULL) {
 			pen_x += glyph.advance_x >> 6;
 			pen_y += glyph.advance_y >> 6;

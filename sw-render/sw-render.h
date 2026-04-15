@@ -15,7 +15,7 @@ struct SWRender {
 	int width;      // Destination image width
 	int height;     // Destination image height
 
-	struct Font default_font;
+	struct FontBMPFont default_font;
 	uint32_t last_default_font_size;
 };
 
@@ -29,6 +29,7 @@ struct FloatRect {
 
 // Initialization
 void swr_initialize(struct SWRender *swr);
+void swr_deinitialize(struct SWRender *swr);
 void swr_set_output(struct SWRender *swr, uint32_t *buffer, int width, int height);
 
 // Color functions. These return ARGB values
@@ -37,7 +38,7 @@ uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
 // Drawing functions
 void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
-void swr_draw_text_ex(struct SWRender *swr, const char *text, struct Font *font_bitmaps, uint32_t color, int x, int y);
+void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y);
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
 void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
@@ -46,11 +47,12 @@ void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t
 void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
 // Image channel format conversion
-void swr_convert_image_abgr_to_argb(uint32_t *img, int length);
+void swr_convert_image_argb_to_abgr(uint32_t *img, int length); // These two are the same.
+void swr_convert_image_abgr_to_argb(uint32_t *img, int length); // These two are the same.
 
 // Internal functions
 void swr_crash_if_dest_is_null(struct SWRender *swr);
-int swr_draw_glyph(struct SWRender *swr, struct GlyphBitmap img, uint32_t color, int img_x, int img_y);
+int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t color, int img_x, int img_y);
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b);
 uint32_t swr_abgr_to_argb(uint32_t abgr);
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);

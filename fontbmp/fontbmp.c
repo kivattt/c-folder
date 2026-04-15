@@ -1,20 +1,20 @@
 #include "fontbmp.h"
 
-struct Font fontbmp_initialize() {
-	struct Font out;
-	out.glyph_list = malloc(sizeof(struct GlyphBitmap) * 256);
+struct FontBMPFont fontbmp_initialize() {
+	struct FontBMPFont out;
+	out.glyph_list = malloc(sizeof(struct FontBMPGlyphBitmap) * 256);
 	out.internal_bitmap_data = NULL;
 	return out;
 };
 
-void fontbmp_deinitialize(struct Font font_bitmaps) {
+void fontbmp_deinitialize(struct FontBMPFont font_bitmaps) {
 	free(font_bitmaps.glyph_list);
 	free(font_bitmaps.internal_bitmap_data);
 }
 
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, const int font_height_pixels) {
+FT_Error fontbmp_generate(struct FontBMPFont *font_bitmaps, const char *font_filename, const int font_height_pixels) {
 	int fd = open(font_filename, O_RDONLY);
 	if (fd == -1) {
 		printf("fontbmp_generate: Failed to open font file: %s\n", font_filename);
@@ -42,7 +42,7 @@ FT_Error fontbmp_generate(struct Font *font_bitmaps, const char *font_filename, 
 
 // Frees the font_bitmaps.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels) {
+FT_Error fontbmp_generate_from_memory(struct FontBMPFont *font_bitmaps, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels) {
 	FT_Library library;
 	FT_Error error = 0;
 	FT_Face face;
@@ -93,11 +93,11 @@ FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned 
 
 	int index = 0;
 	for (int character = 0; character <= 255; character++) {
-		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
+		font_bitmaps->glyph_list[character] = (struct FontBMPGlyphBitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
 
 		if (character == ' ') {
 			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
-			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+			font_bitmaps->glyph_list[character] = (struct FontBMPGlyphBitmap){
 				.advance_x = face->glyph->advance.x,
 				.advance_y = face->glyph->advance.y,
 				.bitmap_data = NULL,
@@ -105,7 +105,7 @@ FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned 
 			continue;
 		} else if (character == '\t') {
 			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
-			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+			font_bitmaps->glyph_list[character] = (struct FontBMPGlyphBitmap){
 				.advance_x = face->glyph->advance.x * 4, // 4 spaces
 				.advance_y = 0,
 				.bitmap_data = NULL,
@@ -113,7 +113,7 @@ FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned 
 			continue;
 		} else if (character == '\n') {
 			error = FT_Load_Char(face, ' ', FT_LOAD_DEFAULT);
-			font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+			font_bitmaps->glyph_list[character] = (struct FontBMPGlyphBitmap){
 				.advance_x = 0, // It's up to the renderer to reset x position.
 				.advance_y = face->size->metrics.height,
 				.bitmap_data = NULL,
@@ -144,7 +144,7 @@ FT_Error fontbmp_generate_from_memory(struct Font *font_bitmaps, const unsigned 
 		assert(width == pitch);
 
 		memcpy(&font_bitmaps->internal_bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
-		font_bitmaps->glyph_list[character] = (struct GlyphBitmap){
+		font_bitmaps->glyph_list[character] = (struct FontBMPGlyphBitmap){
 			.width = width,
 			.rows = rows,
 			.pitch = pitch,
