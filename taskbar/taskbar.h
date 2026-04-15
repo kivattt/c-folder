@@ -6,8 +6,6 @@
 #include <time.h>
 #include "../sw-render/sw-render.h"
 
-#include "stb_image.h"
-
 // Max amount of taskbars (screens)
 #define TASKBAR_MAX_MONITORS 64
 
@@ -39,10 +37,12 @@ struct Taskbar {
 	float last_scale;
 	struct TaskbarEvent last_event;
 
-	struct Font font;
+	struct FontBMPFont font;
 	char *font_name;
 	int font_size;
 	char clock[8+1];
+
+	char *filenames_buffer;
 
 	unsigned char *background_bitmap;
 	int background_width;
@@ -52,7 +52,7 @@ struct Taskbar {
 	struct TaskbarPerMonitorData per_monitor_data[TASKBAR_MAX_MONITORS];
 };
 
-struct Taskbar *taskbar_initialize();
+int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
 void taskbar_deinitialize(struct Taskbar *tb);
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e);
 void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale, int bar_height_at_1x_scale);

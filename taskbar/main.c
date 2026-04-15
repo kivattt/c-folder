@@ -46,7 +46,7 @@ struct wl_pointer *pointer = NULL;
 struct BarMonitor *bars = NULL;
 int n_monitors = 0;
 
-struct Taskbar *taskbar;
+struct Taskbar taskbar;
 
 static struct wl_surface *current_surface = NULL;
 static int current_x = 0;
@@ -163,7 +163,7 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(taskbar, index, e);
+	taskbar_handle_input_event(&taskbar, index, e);
 }
 
 static void pointer_button(void *data, struct wl_pointer *p,
@@ -198,7 +198,7 @@ static void pointer_button(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(taskbar, index, e);
+	taskbar_handle_input_event(&taskbar, index, e);
 }
 
 static void pointer_axis(void *data, struct wl_pointer *p,
@@ -241,7 +241,7 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
 
-	taskbar_draw(taskbar, index, next->data, bw, bh, (float)b->scale, BAR_HEIGHT);
+	taskbar_draw(&taskbar, index, next->data, bw, bh, (float)b->scale, BAR_HEIGHT);
 
 	wl_surface_attach(b->surface, next->wl_buf, 0, 0);
 	wl_surface_damage(b->surface, 0, 0, bw, bh);
@@ -319,7 +319,7 @@ static void layer_configure(void *data,
 	struct Buffer *buf = &b->buffers[0];
 	int index = b - bars;
 
-	taskbar_draw(taskbar, index, buf->data, bw, bh, (float)b->scale, BAR_HEIGHT);
+	taskbar_draw(&taskbar, index, buf->data, bw, bh, (float)b->scale, BAR_HEIGHT);
 
 	wl_surface_attach(b->surface, buf->wl_buf, 0, 0);
 	wl_surface_damage(b->surface, 0, 0, bw, bh);
@@ -427,6 +427,12 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 int main() {
+	int err = taskbar_initialize(&taskbar, "assets");
+	if (err) {
+		printf("taskbar_initialize returned an error\n");
+		return err;
+	}
+
 	display = wl_display_connect(NULL);
 	if (!display) {
 		printf("Unable to connect to Wayland\n");
@@ -451,13 +457,11 @@ int main() {
 
 	wl_display_roundtrip(display);
 
-	taskbar = taskbar_initialize();
-
 	while (1) {
 		wl_display_dispatch(display);
 	}
 
-	taskbar_deinitialize(taskbar);
+	taskbar_deinitialize(&taskbar);
 
 	return 0;
 }

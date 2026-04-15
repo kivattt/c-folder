@@ -1,34 +1,55 @@
 #include "taskbar.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+// Bunch of nonsense to avoid multiple-definition compile errors
+// When using this library with Raylib, which also uses STB_IMAGE_IMPLEMENTATION.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+	#define STB_IMAGE_IMPLEMENTATION
+	#define STB_IMAGE_STATIC
+	#include "stb_image.h"
+#pragma GCC diagnostic pop
 
 #define BACKGROUND_COLOR swr_rgb(42, 44, 46)
 #define TEXT_COLOR swr_rgb(220, 220, 220)
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-struct Taskbar *taskbar_initialize() {
-	struct Taskbar *tb = malloc(sizeof(struct Taskbar));
+// Returns 0 on success, non-zero on error.
+int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
+	if (tb == NULL) {
+		printf("taskbar: taskbar_initialize called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
+		assert(0);
+	}
+
+	tb->filenames_buffer = malloc(2048);
+
+	int filename_index = 0;
+	tb->font_name = &tb->filenames_buffer[filename_index];
+	filename_index += 1 + sprintf(&tb->filenames_buffer[filename_index], "%s/Lekton-Regular.ttf", assets_folder);
+
+	char *background_filename = &tb->filenames_buffer[filename_index];
+	filename_index += 1 + sprintf(&tb->filenames_buffer[filename_index], "%s/background.png", assets_folder);
+
 	tb->last_scale = 1.0;
 	tb->font_size = 22;
-	tb->font_name = "assets/Lekton-Regular.ttf";
 	tb->font = fontbmp_initialize();
-	fontbmp_generate(&tb->font, tb->font_name, 24);
+	FT_Error err = fontbmp_generate(&tb->font, tb->font_name, tb->font_size);
+	if (err) {
+		return err;
+	}
 
 	swr_initialize(&tb->swr);
 
 	int channels;
-	tb->background_bitmap = stbi_load("assets/background.png", &tb->background_width, &tb->background_height, &channels, 4);
+	tb->background_bitmap = stbi_load(background_filename, &tb->background_width, &tb->background_height, &channels, 4);
 	swr_convert_image_abgr_to_argb((uint32_t*)tb->background_bitmap, tb->background_width * tb->background_height);
-	return tb;
+
+	return 0;
 }
 
 void taskbar_deinitialize(struct Taskbar *tb) {
 	fontbmp_deinitialize(tb->font);
 	stbi_image_free(tb->background_bitmap);
-
-	free(tb);
 }
 
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e) {
@@ -63,7 +84,10 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 	// Set the font size if scale changed
 	if (scale != tb->last_scale) {
-		fontbmp_generate(&tb->font, tb->font_name, tb->font_size * scale);
+		FT_Error err = fontbmp_generate(&tb->font, tb->font_name, tb->font_size * scale);
+		if (err) {
+			printf("fontbmp_generate returned an error (scale: %f, last_scale: %f)\n", scale, tb->last_scale);
+		}
 	}
 
 	for (int i = 0; i < width * height; i++) {
