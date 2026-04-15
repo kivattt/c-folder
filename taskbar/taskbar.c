@@ -6,11 +6,13 @@
 #define BACKGROUND_COLOR swr_rgb(42, 44, 46)
 #define TEXT_COLOR swr_rgb(220, 220, 220)
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 struct Taskbar *taskbar_initialize() {
 	struct Taskbar *tb = malloc(sizeof(struct Taskbar));
 	tb->last_scale = 1.0;
 	tb->font_size = 22;
-	tb->font_name = "assets/Inconsolata-Regular.ttf";
+	tb->font_name = "assets/Lekton-Regular.ttf";
 	tb->font = fontbmp_initialize();
 	fontbmp_generate(&tb->font, tb->font_name, 24);
 
@@ -37,20 +39,7 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct Ta
 	printf("\tmouse_y = %i\n", e.mouse_y);
 }
 
-// s needs to be atleast 8 bytes
-void clock_string(char *s) {
-	struct timeval tv;
-	struct timezone tz;
-	int error = gettimeofday(&tv, &tz);
-	if (error) {
-		return;
-	}
-
-	struct tm *today = localtime(&tv.tv_sec);
-	sprintf(s, "%02d:%02d:%02d", today->tm_hour, today->tm_min, today->tm_sec);
-}
-
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale) {
+void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale, int bar_height_at_1x_scale) {
 	if (tb == NULL) {
 		return;
 	}
@@ -82,9 +71,22 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	}
 
 	swr_set_output(&tb->swr, framebuffer, width, height);
-	swr_draw_image(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0, 0);
-	swr_draw_text(&tb->swr, "hello world!", tb->font_size, TEXT_COLOR, 20, 20);
+	float max_scale = MAX((width / 1920.0f), (height / (float)bar_height_at_1x_scale));
+	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, max_scale, 0, 0);
 	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
 
 	tb->last_scale = scale;
+}
+
+// s needs to be atleast 8 bytes
+void clock_string(char *s) {
+	struct timeval tv;
+	struct timezone tz;
+	int error = gettimeofday(&tv, &tz);
+	if (error) {
+		return;
+	}
+
+	struct tm *today = localtime(&tv.tv_sec);
+	sprintf(s, "%02d:%02d:%02d", today->tm_hour, today->tm_min, today->tm_sec);
 }

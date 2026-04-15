@@ -55,7 +55,7 @@ struct Taskbar {
 struct Taskbar *taskbar_initialize();
 void taskbar_deinitialize(struct Taskbar *tb);
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e);
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale);
+void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale, int bar_height_at_1x_scale);
 
 // Internal functions
-
+void clock_string(char *s);
