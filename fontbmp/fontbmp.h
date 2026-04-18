@@ -27,6 +27,9 @@ struct FontBMPGlyphBitmap {
 struct FontBMPFont {
 	struct FontBMPGlyphBitmap *glyph_list;
 	uint8_t *internal_bitmap_data;
+
+	// Ascender from Freetype2 (shift right by 6 to get pixel amount)
+	signed long ascender;
 };
 
 // Initialize the library
@@ -36,8 +39,8 @@ struct FontBMPFont fontbmp_initialize();
 // Deinitialize the library
 void fontbmp_deinitialize(struct FontBMPFont font_bitmaps);
 
-// font_height_pixels is not actually a measure in pixels, its some Freetype2 bs. A bitmap height can go beyond what you specify.
+// font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
 FT_Error fontbmp_generate(struct FontBMPFont *font_bitmaps, const char *font_filename, const int font_height_pixels);
 
-// font_height_pixels is not actually a measure in pixels, its some Freetype2 bs. A bitmap height can go beyond what you specify.
+// font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
 FT_Error fontbmp_generate_from_memory(struct FontBMPFont *font_bitmaps, const unsigned char *font_data, signed long font_data_size, const int font_height_pixels);

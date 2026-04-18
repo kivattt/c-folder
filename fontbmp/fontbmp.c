@@ -162,11 +162,15 @@ FT_Error fontbmp_generate_from_memory(struct FontBMPFont *font_bitmaps, const un
 		assert(index <= bitmap_size);
 	}
 
+	assert(error == 0);
+	font_bitmaps->ascender = face->size->metrics.ascender;
+
 	//printf("actual size: %i, should be: %i\n", index, bitmap_size);
 	assert(index == bitmap_size);
 done:
 	FT_Done_Face(face);
 	FT_Done_FreeType(library);
+
 
 	return error;
 }
