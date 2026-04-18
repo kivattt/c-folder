@@ -22,6 +22,8 @@ int main() {
 		return err;
 	}
 
+	printf("Press numpad + or - keys to change UI scale\n");
+
 	float scale = 1.0;
 	while (!WindowShouldClose()) {
 		if (IsKeyDown(KEY_Q)) {
@@ -29,10 +31,14 @@ int main() {
 		}
 
 		if (IsKeyPressed(KEY_KP_ADD)) {
-			scale += 1.1;
+			scale += 0.1;
+			printf("Set scale: %f\n", scale);
 		} else if (IsKeyPressed(KEY_KP_SUBTRACT)) {
-			scale -= 1.1;
+			scale -= 0.1;
+			if (scale < 0) scale = 0;
+			printf("Set scale: %f\n", scale);
 		}
+
 
 		int window_width = GetScreenWidth();
 		int window_height = GetScreenHeight();

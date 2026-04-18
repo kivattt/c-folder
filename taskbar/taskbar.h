@@ -28,21 +28,22 @@ struct TaskbarEvent {
 
 // Per-monitor data
 struct TaskbarPerMonitorData {
+	int is_initialized;
 	unsigned long long frame_number;
+
+	float last_scale;
+	struct FontBMPFont font;
+	char *font_name;
+	int font_size;
 };
 
 struct Taskbar {
 	// Global data
 	struct SWRender swr;
-	float last_scale;
 	struct TaskbarEvent last_event;
-
-	struct FontBMPFont font;
-	char *font_name;
-	int font_size;
 	char clock[8+1];
-
-	char *filenames_buffer;
+	char *filename_lekton_font;
+	char *filename_background;
 
 	unsigned char *background_bitmap;
 	int background_width;
@@ -59,3 +60,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 // Internal functions
 void clock_string(char *s);
+int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, float scale);
+void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index);
+int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index, float scale);

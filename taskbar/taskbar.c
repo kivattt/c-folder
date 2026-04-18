@@ -14,6 +14,69 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+// Set's the font size and regenerates the font bitmaps.
+int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index, float scale) {
+	if (tb == NULL) {
+		printf("taskbar: taskbar_per_monitor_data_set_font_size called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
+		assert(0);
+	}
+
+	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
+	if (!m->is_initialized) {
+		printf("taskbar: taskbar_per_monitor_data_set_font_size called on uninitialized per-monitor data\n");
+		assert(0);
+	}
+
+	m->font_size = 22 * scale;
+
+	FT_Error err = fontbmp_generate(&m->font, m->font_name, m->font_size);
+	if (err) {
+		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f)\n", scale, m->last_scale);
+		return err;
+	}
+
+	return 0;
+}
+
+int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, float scale) {
+	if (tb == NULL) {
+		printf("taskbar: taskbar_per_monitor_data_initialize called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
+		assert(0);
+	}
+
+	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
+	if (m->is_initialized) {
+		printf("taskbar: taskbar_per_monitor_data_initialize called on already initialized per-monitor data\n");
+		assert(0);
+	}
+
+	m->is_initialized = 1;
+	m->font_name = tb->filename_lekton_font;
+	m->last_scale = scale;
+	m->font = fontbmp_initialize();
+
+	int err = taskbar_per_monitor_data_set_font_size(tb, monitor_index, scale);
+	assert(err == 0);
+
+	return 0;
+}
+
+void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index) {
+	if (tb == NULL) {
+		printf("taskbar: taskbar_per_monitor_data_deinitialize called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
+		assert(0);
+	}
+
+	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
+	if (!m->is_initialized) {
+		printf("taskbar: taskbar_per_monitor_data_deinitialize called on uninitialized per-monitor data\n");
+		assert(0);
+	}
+
+	m->is_initialized = 0;
+	fontbmp_deinitialize(m->font);
+}
+
 // Returns 0 on success, non-zero on error.
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	if (tb == NULL) {
@@ -21,36 +84,35 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 		assert(0);
 	}
 
-	tb->filenames_buffer = malloc(1024); // More than enough for our asset filenames (including assets_folder)
+	// Wasteful to do multiple allocations, but it is simple...
+	tb->filename_lekton_font = malloc(256);
+	sprintf(tb->filename_lekton_font, "%s/Lekton-Regular.ttf", assets_folder);
 
-	int filename_index = 0;
-	tb->font_name = &tb->filenames_buffer[filename_index];
-	filename_index += 1 + sprintf(&tb->filenames_buffer[filename_index], "%s/Lekton-Regular.ttf", assets_folder);
-
-	char *background_filename = &tb->filenames_buffer[filename_index];
-	filename_index += 1 + sprintf(&tb->filenames_buffer[filename_index], "%s/background.png", assets_folder);
-
-	tb->last_scale = 1.0;
-	tb->font_size = 22;
-	tb->font = fontbmp_initialize();
-	FT_Error err = fontbmp_generate(&tb->font, tb->font_name, tb->font_size);
-	if (err) {
-		return err;
-	}
+	tb->filename_background = malloc(256);
+	sprintf(tb->filename_background, "%s/background.png", assets_folder);
 
 	swr_initialize(&tb->swr);
 
 	int channels;
-	tb->background_bitmap = stbi_load(background_filename, &tb->background_width, &tb->background_height, &channels, 4);
+	tb->background_bitmap = stbi_load(tb->filename_background, &tb->background_width, &tb->background_height, &channels, 4);
 	swr_convert_image_abgr_to_argb((uint32_t*)tb->background_bitmap, tb->background_width * tb->background_height);
+
+	memset(tb->per_monitor_data, 0, TASKBAR_MAX_MONITORS * sizeof(struct TaskbarPerMonitorData));
 
 	return 0;
 }
 
 void taskbar_deinitialize(struct Taskbar *tb) {
-	free(tb->filenames_buffer);
-	fontbmp_deinitialize(tb->font);
 	stbi_image_free(tb->background_bitmap);
+
+	free(tb->filename_lekton_font);
+	free(tb->filename_background);
+
+	for (int i = 0; i < TASKBAR_MAX_MONITORS; i++) {
+		if (tb->per_monitor_data[i].is_initialized) {
+			taskbar_per_monitor_data_deinitialize(tb, i);
+		}
+	}
 }
 
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e) {
@@ -69,8 +131,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
 
-	struct TaskbarPerMonitorData *data = &tb->per_monitor_data[monitor_index];
-	data->frame_number += 1;
+	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
+	if (!m->is_initialized) {
+		taskbar_per_monitor_data_initialize(tb, monitor_index, scale);
+	}
+
+	m->frame_number += 1;
 
 	/*if (monitor_index == 1) {
 		struct timespec ts;
@@ -79,16 +145,14 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		printf("Milliseconds since epoch: %ld\n", milliseconds);
 	}*/
 
-	if (data->frame_number % 30 == 0) {
+	if (m->frame_number % 30 == 0) {
 		clock_string(tb->clock);
 	}
 
 	// Set the font size if scale changed
-	if (scale != tb->last_scale) {
-		FT_Error err = fontbmp_generate(&tb->font, tb->font_name, tb->font_size * scale);
-		if (err) {
-			printf("fontbmp_generate returned an error (scale: %f, last_scale: %f)\n", scale, tb->last_scale);
-		}
+	if (scale != m->last_scale) {
+		int err = taskbar_per_monitor_data_set_font_size(tb, monitor_index, scale);
+		assert(err == 0);
 	}
 
 	for (int i = 0; i < width * height; i++) {
@@ -98,10 +162,10 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	swr_set_output(&tb->swr, framebuffer, width, height);
 	float max_scale = MAX((width / 1920.0f), (height / (float)bar_height_at_1x_scale));
 	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, max_scale, 0, 0);
-	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, swr_rgb(0,0,0), width - 97 * scale, (tb->font_size + 1) * scale + 1);
-	swr_draw_text_ex(&tb->swr, tb->clock, &tb->font, TEXT_COLOR, width - 97 * scale, (tb->font_size + 1) * scale);
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
-	tb->last_scale = scale;
+	m->last_scale = scale;
 }
 
 // s needs to be atleast 8 bytes
