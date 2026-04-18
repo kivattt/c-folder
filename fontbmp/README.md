@@ -7,11 +7,12 @@ You can re-run `fontbmp_generate` with a different font-size to change the font 
 
 This library uses freetype to render the glyphs.
 
-It contains only 3 functions:
+It contains only 4 functions:
 ```
 fontbmp_initialize
 fontbmp_deinitialize
 fontbmp_generate
+fontbmp_generate_from_memory
 ```
 
 See [fontbmp.h](fontbmp.h) for detailed definitions
