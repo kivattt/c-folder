@@ -14,6 +14,7 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+// Internal function: called in taskbar_draw whenever the scale parameter changed from the last taskbar_draw call
 // Set's the font size and regenerates the font bitmaps.
 int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index, float scale) {
 	if (tb == NULL) {
@@ -38,6 +39,7 @@ int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index
 	return 0;
 }
 
+// Internal function: called in taskbar_draw per monitor if it hasn't already been initialized
 int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, float scale) {
 	if (tb == NULL) {
 		printf("taskbar: taskbar_per_monitor_data_initialize called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
@@ -61,6 +63,7 @@ int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, f
 	return 0;
 }
 
+// Internal function: called in taskbar_deinitialize()
 void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index) {
 	if (tb == NULL) {
 		printf("taskbar: taskbar_per_monitor_data_deinitialize called with a NULL pointer. Remember: your Taskbar struct should be on the stack!\n");
