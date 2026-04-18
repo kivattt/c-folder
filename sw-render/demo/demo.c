@@ -27,7 +27,7 @@ int main() {
 		memset(image, 0, image_size);
 
 		// Draw text using the default font to the frame buffer
-		swr_draw_text(&r, "Hello world, from default font!", 22, swr_rgb(255, 255, 255), 75, 75);
+		swr_draw_text(&r, "Hello world, from default font!", 22, swr_rgb(255, 255, 255), 75, 57);
 
 		// Draw a rounded rectangle outline around the text
 		struct Rect rect = {

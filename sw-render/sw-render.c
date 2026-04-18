@@ -248,8 +248,8 @@ void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32
 void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y) {
 	swr_crash_if_dest_is_null(swr);
 
-	int pen_x = 0;
-	int pen_y = 0;
+	int pen_x = x;
+	int pen_y = y + (font_bitmaps->ascender >> 6);
 
 	for (int i = 0; i < strlen(text); i++) {
 		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
@@ -265,8 +265,8 @@ void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont
 			continue;
 		}
 
-		int x_pos = x + pen_x + glyph.bitmap_left;
-		int y_pos = y + pen_y - glyph.bitmap_top;
+		int x_pos = pen_x + glyph.bitmap_left;
+		int y_pos = pen_y - glyph.bitmap_top;
 
 		if (swr_draw_glyph(swr, glyph, color, x_pos, y_pos)) {
 			// Nothing to draw beyond this line.
