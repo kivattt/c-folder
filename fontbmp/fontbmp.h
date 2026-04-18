@@ -39,8 +39,10 @@ struct FontBMPFont fontbmp_initialize();
 // Deinitialize the library
 void fontbmp_deinitialize(struct FontBMPFont font_bitmaps);
 
+// Frees the font_bitmaps.bitmap_data before re-allocating it.
 // font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
 FT_Error fontbmp_generate(struct FontBMPFont *font_bitmaps, const char *font_filename, const int font_height_pixels);
 
+// Frees the font_bitmaps.bitmap_data before re-allocating it.
 // font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
 FT_Error fontbmp_generate_from_memory(struct FontBMPFont *font_bitmaps, const unsigned char *font_data, signed long font_data_size, const int font_height_pixels);
