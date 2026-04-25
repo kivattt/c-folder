@@ -370,7 +370,7 @@ static void create_bar(struct BarMonitor *b) {
 
 	zwlr_layer_surface_v1_set_keyboard_interactivity(
 		b->layer_surface,
-		ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_EXCLUSIVE
+		ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
 	);
 
 	zwlr_layer_surface_v1_add_listener(b->layer_surface,

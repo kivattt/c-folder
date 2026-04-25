@@ -41,7 +41,7 @@ struct Taskbar {
 	// Global data
 	struct SWRender swr;
 	struct TaskbarEvent last_event;
-	char clock[8+1];
+	char clock[8+1]; // Enough for "01:23:45" (including the null byte)
 	char *filename_lekton_font;
 	char *filename_background;
 

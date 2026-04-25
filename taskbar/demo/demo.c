@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 #include "../taskbar.h"
+#include "../../sw-render/sw-render.h"
 
 int main() {
 	int image_width = 3840;
@@ -48,6 +49,7 @@ int main() {
 
 		int bar_height = 100;
 		taskbar_draw(&tb, 0, image, window_width, window_height, scale, bar_height);
+		swr_convert_image_argb_to_abgr(image, image_width*image_height);
 
 		// Do NOT call UnloadImage() on this!
 		Image img = {
