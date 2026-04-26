@@ -31,6 +31,7 @@ int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index
 	m->font_size = 22 * scale;
 
 	FT_Error err = fontbmp_generate(&m->font, m->font_name, m->font_size);
+	printf("Font bitmaps regenerated with size %i\n", m->font_size);
 	if (err) {
 		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f)\n", scale, m->last_scale);
 		return err;
@@ -126,13 +127,15 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct Ta
 	printf("\tmouse_y = %i\n", e.mouse_y);
 }
 
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale, int bar_height_at_1x_scale) {
+void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale /* unused */, int bar_height_at_1x_scale) {
 	if (tb == NULL) {
 		return;
 	}
 
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	scale = (float)height / tb->background_height;
 
 	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
 	if (!m->is_initialized) {
@@ -158,13 +161,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		assert(err == 0);
 	}
 
-	for (int i = 0; i < width * height; i++) {
-		framebuffer[i] = BACKGROUND_COLOR;
-	}
-
 	swr_set_output(&tb->swr, framebuffer, width, height);
-	float max_scale = MAX((width / 1920.0f), (height / (float)bar_height_at_1x_scale));
-	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, max_scale, 0, 0);
+
+	// Draw the background with its own scale
+	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
+
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
