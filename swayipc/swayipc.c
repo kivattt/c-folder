@@ -82,7 +82,6 @@ void swayipc_receive_packet(struct SwayIPC *ipc, char **packet, int *packetSize)
 	// If we haven't reached the end of the previous packet, return with next message contained within.
 	if (ipc->messagePtr != NULL && ipc->messagePtr < ipc->packetBuffer + ipc->packetSize) {
 		int32_t payloadLength = *((int32_t*)(ipc->messagePtr+6));
-		int32_t payloadType = *((int32_t*)(ipc->messagePtr+10));
 		*packet = ipc->messagePtr;
 		*packetSize = headerSize + payloadLength;
 		ipc->messagePtr += headerSize + payloadLength; // Advance to the next message
@@ -97,7 +96,6 @@ void swayipc_receive_packet(struct SwayIPC *ipc, char **packet, int *packetSize)
 	assert(ipc->packetSize != 0); // On end of file
 
 	int32_t payloadLength = *((int32_t*)(ipc->packetBuffer+6));
-	int32_t payloadType = *((int32_t*)(ipc->packetBuffer+10));
 	ipc->messagePtr = ipc->packetBuffer;
 	*packet = ipc->messagePtr;
 	*packetSize = headerSize + payloadLength;
