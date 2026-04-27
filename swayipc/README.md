@@ -2,6 +2,8 @@
 
 This is a library which subscribes to the `workspace` event via Sway IPC and lets you handle those events.
 
+I use this library for my Sway taskbar
+
 `swayipc_receive_packet` is blocking, so this library is best used in a separate thread.
 
 It allocates 128 kB of memory for the packet buffer.

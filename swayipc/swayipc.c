@@ -4,15 +4,25 @@ void swayipc_initialize(struct SwayIPC *ipc) {
 	memset(ipc, 0, sizeof(struct SwayIPC));
 	ipc->packetBufferSize = 128000; // 128 kB
 	ipc->packetBuffer = malloc(ipc->packetBufferSize);
+
+	ipc->initialWorkspacesPacket = malloc(ipc->packetBufferSize);
 }
 
 void swayipc_deinitialize(struct SwayIPC *ipc) {
 	free(ipc->packetBuffer);
 	ipc->packetBuffer = NULL;
+
+	free(ipc->initialWorkspacesPacket);
+	ipc->initialWorkspacesPacket = NULL;
 }
 
 // Returns non-zero on error
 int swayipc_connect(struct SwayIPC *ipc) {
+	if (ipc->packetBuffer == NULL || ipc->initialWorkspacesPacket == NULL) {
+		printf("swayipc_connect(): Buffers were NULL. Did you forget to call swayipc_initialize()?\n");
+		assert(0);
+	}
+
 	char *socketPath = getenv("SWAYSOCK");
 	if (socketPath == NULL) {
 		printf("SWAYSOCK env variable was not set\n");
@@ -35,40 +45,33 @@ int swayipc_connect(struct SwayIPC *ipc) {
 		return 3;
 	}
 
-	// Create the subscribe request data
-	const int headerSize = 14; // 6 + 4 + 4
-	int32_t payloadLength = 13;
-
-	char command[headerSize + payloadLength]; // Exactly enough for the subscribe to workspace command
-	char *pointer = command;
-
-	// i3-ipc
-	int len = strlen("i3-ipc");
-	memcpy(pointer, "i3-ipc", len);
-	pointer += len;
-
-	// Payload length, 32-bit signed integer
-	memcpy(pointer, &payloadLength, 4);
-	pointer += 4;
-
-	// Payload type, 32-bit signed integer
-	int32_t payloadType = 2;
-	memcpy(pointer, &payloadType, 4);
-	pointer += 4;
-
-	// ["workspace"]
-	len = strlen("[\"workspace\"]");
-	memcpy(pointer, "[\"workspace\"]", len);
-	pointer += len;
-
-	// Send the subscribe request
-	size_t length = pointer - command;
-	if (write(ipc->socketFileDescriptor, command, length) != length) {
+	// Send GET_WORKSPACES message
+	//                     0 (payload len)    1 (payload type)
+	char *command = "i3-ipc\x00\x00\x00\x00\x01\x00\x00\x00";
+	size_t commandLength = 14; // 6 + 4 + 4
+	if (write(ipc->socketFileDescriptor, command, commandLength) != commandLength) {
 		return 4;
 	}
 
+	// Receive GET_WORKSPACES response, and put it in ipc->initialWorkspacesPacket
 	memset(ipc->packetBuffer, 0, ipc->packetBufferSize);
-	int count = read(ipc->socketFileDescriptor, ipc->packetBuffer, ipc->packetBufferSize);
+	int count = read(ipc->socketFileDescriptor, ipc->initialWorkspacesPacket, ipc->packetBufferSize);
+	ipc->initialWorkspacesPacketSize = count;
+	assert(count <= ipc->packetBufferSize);
+	assert(count != -1); // error
+	assert(count != 0); // end of file
+
+	// Send subscribe to "workspace" message
+	//                 13 (payload len) 2 (payload type)
+	command = "i3-ipc\x0d\x00\x00\x00\x02\x00\x00\x00[\"workspace\"]";
+	commandLength = 27; // 6 + 4 + 4 + 13
+	if (write(ipc->socketFileDescriptor, command, commandLength) != commandLength) {
+		return 5;
+	}
+
+	// Receive subscribe response (success or not). Ignored for now
+	memset(ipc->packetBuffer, 0, ipc->packetBufferSize);
+	count = read(ipc->socketFileDescriptor, ipc->packetBuffer, ipc->packetBufferSize);
 	assert(count <= ipc->packetBufferSize);
 	assert(count != -1); // error
 	assert(count != 0); // end of file
@@ -77,6 +80,11 @@ int swayipc_connect(struct SwayIPC *ipc) {
 }
 
 void swayipc_receive_packet(struct SwayIPC *ipc, char **packet, int *packetSize) {
+	if (ipc->packetBuffer == NULL || ipc->initialWorkspacesPacket == NULL) {
+		printf("swayipc_receive_packet(): Buffers were NULL. Did you forget to call swayipc_initialize()?\n");
+		assert(0);
+	}
+
 	const int headerSize = 14; // 6 + 4 + 4
 
 	// If we haven't reached the end of the previous packet, return with next message contained within.

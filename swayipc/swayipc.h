@@ -11,11 +11,14 @@
 struct SwayIPC {
 	int socketFileDescriptor;
 
-	char *packetBuffer;
+	char *packetBuffer; // Gets allocated in swayipc_initialize
 	size_t packetBufferSize;
 
 	char *messagePtr;
 	int packetSize;
+
+	char *initialWorkspacesPacket; // Gets allocated in swayipc_initialize
+	int initialWorkspacesPacketSize;
 };
 
 void swayipc_initialize(struct SwayIPC *ipc);
