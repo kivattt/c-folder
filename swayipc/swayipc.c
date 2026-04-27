@@ -102,22 +102,4 @@ void swayipc_receive_packet(struct SwayIPC *ipc, char **packet, int *packetSize)
 
 	ipc->messagePtr += headerSize + payloadLength; // Advance to the next message
 	return;
-
-	// Read message(s) in the packet
-	/*char *message = buf;
-	for (int maxIter = 0; maxIter < 10; maxIter++) {
-		assert(strncmp(message, "i3-ipc", 6) == 0);
-		int32_t payloadLength = *((int32_t*)(message+6));
-		int32_t payloadType = *((int32_t*)(message+10));
-		//printf("    type: 0x%x, len: %i\n", payloadType, payloadLength);
-
-		// Handle the payload body
-		handle_i3_ipc_payload(message+headerSize, payloadLength);
-
-		// Advance to next message in the packet
-		message += headerSize + payloadLength;
-		if (message >= ipc->packetBuffer + ipc->packetSize) {
-			break; // Reached the end of the packet
-		}
-	}*/
 }
