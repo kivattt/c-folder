@@ -1,5 +1,8 @@
 #include "taskbar.h"
 
+#define SJ_IMPL
+#include "sj.h"
+
 // Bunch of nonsense to avoid multiple-definition compile errors
 // When using this library with Raylib, which also uses STB_IMAGE_IMPLEMENTATION.
 #pragma GCC diagnostic push
@@ -81,6 +84,138 @@ void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index
 	fontbmp_deinitialize(m->font);
 }
 
+bool eq(sj_Value val, char *s) {
+	size_t len = val.end - val.start;
+	return strlen(s) == len && !memcmp(s, val.start, len);
+}
+
+// Returns non-zero on error
+int read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root) {
+	memset(workspace, 0, sizeof(struct TaskbarWorkspace));
+
+	int hasNum = 0;
+
+	sj_Value key, val;
+	while (sj_iter_object(r, root, &key, &val)) {
+		if (eq(key, "urgent")) {
+			workspace->urgent = val.start[0] == 't';
+		} else if (eq(key, "focused")) {
+			workspace->focused = val.start[0] == 't';
+		} else if (eq(key, "visible")) {
+			workspace->visible = val.start[0] == 't';
+		} else if (eq(key, "output")) {
+			size_t len = val.end - val.start;
+			workspace->output = malloc(len + 1);
+			workspace->output[len] = 0;
+			memcpy(workspace->output, val.start, len);
+		} else if (eq(key, "num")) {
+			hasNum = 1;
+			workspace->num = atoi(val.start);
+			// Bounds check for our hardcoded length 10 workspaces array
+			assert(workspace->num > 0);
+			assert(workspace->num <= 10);
+		}
+	}
+
+	return !hasNum;
+}
+
+// TEMPORARY: REMOVE THIS REMOVE THIS REMOVE THIS
+void print_workspace(struct TaskbarWorkspace workspace) {
+	printf("\tNum: %i\n", workspace.num);
+	printf("\tUrgent: %i\n", workspace.urgent);
+	printf("\tFocused: %i\n", workspace.focused);
+	printf("\tVisible: %i\n", workspace.visible);
+	if (workspace.output == NULL) {
+		printf("\tOutput: NULL\n");
+	} else {
+		printf("Output: %s\n", workspace.output);
+	}
+}
+
+// Modifies only taskbar.workspaces and taskbar.workspaces_mutex
+void *sway_ipc_thread(void *taskbar) {
+	struct Taskbar *tb = taskbar;
+
+	struct SwayIPC ipc;
+	swayipc_initialize(&ipc);
+
+	int err = swayipc_connect(&ipc);
+	if (err) {
+		return NULL;
+	}
+
+	// Set up workspaces with GET_WORKSPACES message
+	int headerSize = 14; // 6 + 4 + 4
+	sj_Reader r = sj_reader(ipc.initialWorkspacesPacket + headerSize, ipc.initialWorkspacesPacketSize - headerSize);
+	sj_Value root = sj_read(&r);
+	sj_Value element;
+	while (sj_iter_array(&r, root, &element)) {
+		struct TaskbarWorkspace workspace;
+		int err = read_workspace_json(&workspace, &r, element);
+
+		if (!err) {
+			print_workspace(workspace);
+
+			pthread_mutex_lock(&tb->workspaces_mutex);
+			tb->workspaces[workspace.num - 1] = workspace;
+			pthread_mutex_unlock(&tb->workspaces_mutex);
+		}
+	}
+
+	while (1) {
+		char *packet;
+		int packetSize;
+		swayipc_receive_packet(&ipc, &packet, &packetSize);
+
+		printf("PACKET: ");
+		fflush(stdout);
+		write(1, packet, packetSize);
+		printf("\n");
+
+		// Parse the JSON body
+		char change[7]; // "reload" (longest change string) + null byte
+
+		sj_Reader r = sj_reader(packet + headerSize, packetSize - headerSize);
+		sj_Value root = sj_read(&r);
+		sj_Value key, val;
+		while (sj_iter_object(&r, root, &key, &val)) {
+			size_t len = val.end - val.start;
+
+			if (eq(key, "change")) {
+				assert(len <= 6);
+				memcpy(change, val.start, len);
+				change[len] = 0;
+			} else if (eq(key, "old")) {
+				struct TaskbarWorkspace workspace;
+				int err = read_workspace_json(&workspace, &r, val);
+
+				if (!err) {
+					// Update the workspace
+					pthread_mutex_lock(&tb->workspaces_mutex);
+					tb->workspaces[workspace.num - 1].focused = 0;
+					pthread_mutex_unlock(&tb->workspaces_mutex);
+				}
+			} else if (eq(key, "current")) {
+				struct TaskbarWorkspace workspace;
+				int err = read_workspace_json(&workspace, &r, val);
+
+				if (!err) {
+					workspace.focused = 1;
+					// Update the workspace
+					pthread_mutex_lock(&tb->workspaces_mutex);
+					tb->workspaces[workspace.num - 1] = workspace;
+					pthread_mutex_unlock(&tb->workspaces_mutex);
+				}
+			}
+		}
+	}
+
+	// Unreachable...
+	swayipc_deinitialize(&ipc);
+	return NULL;
+}
+
 // Returns 0 on success, non-zero on error.
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	if (tb == NULL) {
@@ -103,6 +238,10 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	memset(tb->per_monitor_data, 0, TASKBAR_MAX_MONITORS * sizeof(struct TaskbarPerMonitorData));
 
+	pthread_mutex_init(&tb->workspaces_mutex, NULL);
+	pthread_t swayThread;
+	pthread_create(&swayThread, NULL, sway_ipc_thread, tb);
+
 	return 0;
 }
 
@@ -117,14 +256,20 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 			taskbar_per_monitor_data_deinitialize(tb, i);
 		}
 	}
+
+	pthread_mutex_lock(&tb->workspaces_mutex);
+	for (int i = 0; i < 10; i++) {
+		free(tb->workspaces[i].output);
+	}
+	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e) {
 	tb->last_event = e;
 
-	printf("input on monitor %i (type: %i):\n", monitor_index, e.type);
+	/*printf("input on monitor %i (type: %i):\n", monitor_index, e.type);
 	printf("\tmouse_x = %i\n", e.mouse_x);
-	printf("\tmouse_y = %i\n", e.mouse_y);
+	printf("\tmouse_y = %i\n", e.mouse_y);*/
 }
 
 void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale /* unused */, int bar_height_at_1x_scale) {
@@ -144,13 +289,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 	m->frame_number += 1;
 
-	/*if (monitor_index == 1) {
-		struct timespec ts;
-		clock_gettime(CLOCK_REALTIME, &ts);
-		long milliseconds = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-		printf("Milliseconds since epoch: %ld\n", milliseconds);
-	}*/
-
 	if (m->frame_number % 30 == 0) {
 		clock_string(tb->clock);
 	}
@@ -169,6 +307,22 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
+
+	pthread_mutex_lock(&tb->workspaces_mutex);
+	char *s = malloc(8); // DEBUGGING
+	for (int i = 0; i < 10; i++) {
+		if (tb->workspaces[i].output == NULL) continue; // FIXME
+
+		sprintf(s, "%d", i+1);
+		uint32_t color = swr_rgb(255, 255, 255);
+		if (tb->workspaces[i].focused) {
+			color = swr_rgb(0, 255, 255);
+		}
+
+		swr_draw_text(&tb->swr, s, 22*scale, color, i*40, 0);
+	}
+	free(s); // DEBUGGING
+	pthread_mutex_unlock(&tb->workspaces_mutex);
 
 	m->last_scale = scale;
 }

@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <pthread.h>
 #include "../sw-render/sw-render.h"
+#include "../swayipc/swayipc.h"
+#include "sj.h"
 
 // Max amount of taskbars (screens)
 #define TASKBAR_MAX_MONITORS 64
@@ -30,11 +33,20 @@ struct TaskbarEvent {
 struct TaskbarPerMonitorData {
 	int is_initialized;
 	unsigned long long frame_number;
+	char *monitor_name;
 
 	float last_scale;
 	struct FontBMPFont font;
 	char *font_name;
 	int font_size;
+};
+
+struct TaskbarWorkspace {
+	int num;
+	int urgent;
+	int focused;
+	int visible; // ?
+	char *output; // Allocated in read_workspace_json
 };
 
 struct Taskbar {
@@ -48,6 +60,9 @@ struct Taskbar {
 	unsigned char *background_bitmap;
 	int background_width;
 	int background_height;
+
+	struct TaskbarWorkspace workspaces[10];
+	pthread_mutex_t workspaces_mutex;
 
 	// Per-monitor data
 	struct TaskbarPerMonitorData per_monitor_data[TASKBAR_MAX_MONITORS];
@@ -63,3 +78,6 @@ void clock_string(char *s);
 int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, float scale);
 void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index);
 int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index, float scale);
+void *sway_ipc_thread(void *taskbar); // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
+bool eq(sj_Value, char *s);
+int read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root);
