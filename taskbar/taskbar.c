@@ -1,4 +1,5 @@
 #include "taskbar.h"
+#include <bits/time.h>
 
 #define SJ_IMPL
 #include "sj.h"
@@ -277,6 +278,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 		return;
 	}
 
+	struct timespec startTime;
+	int startTimeRes = clock_gettime(CLOCK_MONOTONIC, &startTime);
+	if (startTimeRes != 0) {
+		printf("clock_gettime() returned an error\n");
+	}
+
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
 
@@ -290,7 +297,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	m->frame_number += 1;
 
 	if (m->frame_number % 30 == 0) {
-		clock_string(tb->clock);
+		char clock[8+1];
+		clock_string(clock);
+		if (clock[7] == '0' || clock[7] == '5') {
+			memcpy(tb->clock, clock, 8+1);
+			m->max_render_time_last_5s = 0.0;
+		}
 	}
 
 	// Set the font size if scale changed
@@ -309,7 +321,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
 	pthread_mutex_lock(&tb->workspaces_mutex);
-	char *s = malloc(8); // DEBUGGING
+	char *s = malloc(32); // DEBUGGING
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].output == NULL) continue; // FIXME
 
@@ -321,8 +333,20 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 		swr_draw_text(&tb->swr, s, 22*scale, color, i*40, 0);
 	}
-	free(s); // DEBUGGING
 	pthread_mutex_unlock(&tb->workspaces_mutex);
+
+	struct timespec endTime;
+	int endTimeRes = clock_gettime(CLOCK_MONOTONIC, &endTime);
+	if (endTimeRes != 0) {
+		printf("clock_gettime() returned an error\n");
+	}
+
+	double renderTimeMs = 1000 * ((endTime.tv_sec - startTime.tv_sec) + (endTime.tv_nsec - startTime.tv_nsec) * 1e-9);
+	m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
+	sprintf(s, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
+	swr_draw_text(&tb->swr, s, 22*scale, swr_rgb(255,255,255), 100, 0);
+
+	free(s); // DEBUGGING
 
 	m->last_scale = scale;
 }

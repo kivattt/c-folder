@@ -39,6 +39,8 @@ struct TaskbarPerMonitorData {
 	struct FontBMPFont font;
 	char *font_name;
 	int font_size;
+	struct timespec last_frame_time;
+	double max_render_time_last_5s;
 };
 
 struct TaskbarWorkspace {
