@@ -61,6 +61,9 @@ int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, f
 	m->font_name = tb->filename_lekton_font;
 	m->last_scale = scale;
 	m->font = fontbmp_initialize();
+	if (tb->debug) {
+		m->debug_string = malloc(64);
+	}
 
 	int err = taskbar_per_monitor_data_set_font_size(tb, monitor_index, scale);
 	assert(err == 0);
@@ -83,6 +86,7 @@ void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index
 
 	m->is_initialized = 0;
 	fontbmp_deinitialize(m->font);
+	free(m->debug_string);
 }
 
 bool eq(sj_Value val, char *s) {
@@ -154,6 +158,7 @@ void *sway_ipc_thread(void *taskbar) {
 	while (sj_iter_array(&r, root, &element)) {
 		struct TaskbarWorkspace workspace;
 		int err = read_workspace_json(&workspace, &r, element);
+		workspace.exists = 1;
 
 		if (!err) {
 			print_workspace(workspace);
@@ -169,10 +174,14 @@ void *sway_ipc_thread(void *taskbar) {
 		int packetSize;
 		swayipc_receive_packet(&ipc, &packet, &packetSize);
 
-		printf("PACKET: ");
-		fflush(stdout);
-		write(1, packet, packetSize);
-		printf("\n");
+		if (tb->debug) {
+			printf("PACKET: ");
+			fflush(stdout);
+			write(1, packet, packetSize);
+			fflush(stdout);
+			printf("\n");
+			fflush(stdout);
+		}
 
 		// Parse the JSON body
 		char change[7]; // "reload" (longest change string) + null byte
@@ -180,6 +189,11 @@ void *sway_ipc_thread(void *taskbar) {
 		sj_Reader r = sj_reader(packet + headerSize, packetSize - headerSize);
 		sj_Value root = sj_read(&r);
 		sj_Value key, val;
+
+		int oldErr = 1, currentErr = 1;
+		struct TaskbarWorkspace old, current;
+		memset(&old, 0, sizeof(struct TaskbarWorkspace));
+		memset(&current, 0, sizeof(struct TaskbarWorkspace));
 		while (sj_iter_object(&r, root, &key, &val)) {
 			size_t len = val.end - val.start;
 
@@ -188,26 +202,52 @@ void *sway_ipc_thread(void *taskbar) {
 				memcpy(change, val.start, len);
 				change[len] = 0;
 			} else if (eq(key, "old")) {
-				struct TaskbarWorkspace workspace;
-				int err = read_workspace_json(&workspace, &r, val);
-
-				if (!err) {
-					// Update the workspace
-					pthread_mutex_lock(&tb->workspaces_mutex);
-					tb->workspaces[workspace.num - 1].focused = 0;
-					pthread_mutex_unlock(&tb->workspaces_mutex);
+				if (val.start[0] == 'n') { // "null"
+					continue;
 				}
+
+				oldErr = read_workspace_json(&old, &r, val);
 			} else if (eq(key, "current")) {
-				struct TaskbarWorkspace workspace;
-				int err = read_workspace_json(&workspace, &r, val);
-
-				if (!err) {
-					workspace.focused = 1;
-					// Update the workspace
-					pthread_mutex_lock(&tb->workspaces_mutex);
-					tb->workspaces[workspace.num - 1] = workspace;
-					pthread_mutex_unlock(&tb->workspaces_mutex);
+				if (val.start[0] == 'n') { // "null"
+					continue;
 				}
+
+				currentErr = read_workspace_json(&current, &r, val);
+			}
+		}
+
+		if (memcmp(change, "empty\0", 6) == 0) {
+			// Delete the workspace
+			if (!currentErr) {
+				pthread_mutex_lock(&tb->workspaces_mutex);
+				tb->workspaces[current.num - 1].exists = 0;
+				pthread_mutex_unlock(&tb->workspaces_mutex);
+			}
+		} else if (memcmp(change, "init\0", 5) == 0) {
+			// Create new workspace without necessarily focusing it
+			if (!currentErr) {
+				pthread_mutex_lock(&tb->workspaces_mutex);
+				tb->workspaces[current.num - 1] = current;
+				tb->workspaces[current.num - 1].exists = 1;
+				pthread_mutex_unlock(&tb->workspaces_mutex);
+			}
+		} else {
+			// Old
+			if (!oldErr) {
+				// Update the workspace
+				pthread_mutex_lock(&tb->workspaces_mutex);
+				tb->workspaces[old.num - 1].focused = 0;
+				pthread_mutex_unlock(&tb->workspaces_mutex);
+			}
+
+			// Current
+			if (!currentErr) {
+				current.exists = 1;
+				current.focused = 1;
+				// Update the workspace
+				pthread_mutex_lock(&tb->workspaces_mutex);
+				tb->workspaces[current.num - 1] = current;
+				pthread_mutex_unlock(&tb->workspaces_mutex);
 			}
 		}
 	}
@@ -279,9 +319,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	}
 
 	struct timespec startTime;
-	int startTimeRes = clock_gettime(CLOCK_MONOTONIC, &startTime);
-	if (startTimeRes != 0) {
-		printf("clock_gettime() returned an error\n");
+	if (tb->debug) {
+		clock_gettime(CLOCK_MONOTONIC, &startTime);
 	}
 
 	assert(monitor_index >= 0);
@@ -320,33 +359,49 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
-	pthread_mutex_lock(&tb->workspaces_mutex);
-	char *s = malloc(32); // DEBUGGING
-	for (int i = 0; i < 10; i++) {
-		if (tb->workspaces[i].output == NULL) continue; // FIXME
+	printf("SCALE: %f\n", scale);
 
-		sprintf(s, "%d", i+1);
-		uint32_t color = swr_rgb(255, 255, 255);
-		if (tb->workspaces[i].focused) {
-			color = swr_rgb(0, 255, 255);
+	pthread_mutex_lock(&tb->workspaces_mutex);
+	char s[3]; // Enough for "10\0"
+	int workspaceXStep = 40*scale;
+	int workspaceX = workspaceXStep / 2;
+	int workspaceSize = 22;
+	for (int i = 0; i < 10; i++) {
+		if (tb->workspaces[i].exists == 0) {
+			continue;
 		}
 
-		swr_draw_text(&tb->swr, s, 22*scale, color, i*40, 0);
+		sprintf(s, "%d", i+1);
+		uint32_t textColor = swr_rgb(255, 255, 255);
+		if (tb->workspaces[i].focused) {
+			float rectWidth = (workspaceSize + 3) * scale;
+			float rectHeight = workspaceSize * scale;
+			float glyphWidth = (8.6 + 3.0) * scale; // FIXME: Make a measure text size function in swr or fontbmp.
+			struct Rect rect = {
+				.x = (float)workspaceX - (rectWidth / 2.0 - glyphWidth / 2.0),
+				//.y = 2.0*scale + (((float)height - 2.0*scale) - rectHeight) / 2.0,
+				.y = scale + (((float)height - scale) - rectHeight) / 2.0,
+				.w = rectWidth,
+				.h = rectHeight,
+			};
+			//swr_draw_rectangle_rounded_outline(&tb->swr, rect, swr_rgb(255,255,255), 6.0, 0.0, 1.0);
+			swr_draw_rectangle_rounded(&tb->swr, rect, swr_rgb(255,255,255), 6.0);
+			textColor = swr_rgb(0, 0, 0);
+		}
+
+		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, workspaceX, 6*scale);
+		workspaceX += workspaceXStep;
 	}
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 
-	struct timespec endTime;
-	int endTimeRes = clock_gettime(CLOCK_MONOTONIC, &endTime);
-	if (endTimeRes != 0) {
-		printf("clock_gettime() returned an error\n");
+	if (tb->debug) {
+		struct timespec endTime;
+		clock_gettime(CLOCK_MONOTONIC, &endTime);
+		double renderTimeMs = 1000 * ((endTime.tv_sec - startTime.tv_sec) + (endTime.tv_nsec - startTime.tv_nsec) * 1e-9);
+		m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
+		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
+		swr_draw_text(&tb->swr, m->debug_string, 22*scale, swr_rgb(255,255,255), width - 480, 0);
 	}
-
-	double renderTimeMs = 1000 * ((endTime.tv_sec - startTime.tv_sec) + (endTime.tv_nsec - startTime.tv_nsec) * 1e-9);
-	m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
-	sprintf(s, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
-	swr_draw_text(&tb->swr, s, 22*scale, swr_rgb(255,255,255), 100, 0);
-
-	free(s); // DEBUGGING
 
 	m->last_scale = scale;
 }

@@ -33,17 +33,18 @@ struct TaskbarEvent {
 struct TaskbarPerMonitorData {
 	int is_initialized;
 	unsigned long long frame_number;
-	char *monitor_name;
+	char *monitor_name; // FIXME: Use this
 
 	float last_scale;
 	struct FontBMPFont font;
 	char *font_name;
 	int font_size;
-	struct timespec last_frame_time;
 	double max_render_time_last_5s;
+	char *debug_string; // Allocated in taskbar_per_monitor_data_initialize()
 };
 
 struct TaskbarWorkspace {
+	int exists;
 	int num;
 	int urgent;
 	int focused;
@@ -52,6 +53,8 @@ struct TaskbarWorkspace {
 };
 
 struct Taskbar {
+	int debug; // Set to 1 to enable debug stuff
+
 	// Global data
 	struct SWRender swr;
 	struct TaskbarEvent last_event;
