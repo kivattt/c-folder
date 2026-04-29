@@ -13,7 +13,7 @@ int main() {
 
 	SetTraceLogLevel(LOG_WARNING);
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(1280, 720, "taskbar demo");
+	InitWindow(1920, 30, "taskbar demo");
 	SetWindowMinSize(0, 0);
 	SetWindowMaxSize(image_width, image_height);
 
@@ -23,23 +23,10 @@ int main() {
 		return err;
 	}
 
-	printf("Press numpad + or - keys to change UI scale\n");
-
-	float scale = 1.0;
 	while (!WindowShouldClose()) {
 		if (IsKeyDown(KEY_Q)) {
 			break;
 		}
-
-		if (IsKeyPressed(KEY_KP_ADD)) {
-			scale += 0.1;
-			printf("Set scale: %f\n", scale);
-		} else if (IsKeyPressed(KEY_KP_SUBTRACT)) {
-			scale -= 0.1;
-			if (scale < 0) scale = 0;
-			printf("Set scale: %f\n", scale);
-		}
-
 
 		int window_width = GetScreenWidth();
 		int window_height = GetScreenHeight();
@@ -48,7 +35,9 @@ int main() {
 		memset(image, 0, image_size);
 
 		int bar_height = 100;
-		taskbar_draw(&tb, 0, image, window_width, window_height, scale, bar_height);
+		taskbar_draw(&tb, 0, image, window_width, window_height, 1.0 /* unused... */, bar_height);
+
+		// SLOW: Raylib expects RGBA, while taskbar_draw uses ARGB.
 		swr_convert_image_argb_to_abgr(image, image_width*image_height);
 
 		// Do NOT call UnloadImage() on this!
@@ -65,7 +54,9 @@ int main() {
 		BeginDrawing();
 		ClearBackground(BLACK);
 		DrawTexture(texture, 0, 0, WHITE); // Draw our software-rendered image
-		DrawFPS(5, 5);
+		if (tb.debug) {
+			DrawFPS(GetScreenWidth() - 600, 5);
+		}
 		EndDrawing();
 
 		UnloadTexture(texture);
