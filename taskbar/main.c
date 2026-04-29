@@ -432,6 +432,7 @@ int main() {
 		printf("taskbar_initialize returned an error\n");
 		return err;
 	}
+	taskbar.debug = 1;
 
 	display = wl_display_connect(NULL);
 	if (!display) {
