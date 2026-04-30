@@ -15,3 +15,17 @@ This is my folder of C stuff for fun.
 
 `trying_freetype` just a folder showing how to compile Freetype \
 `drawing_a_fox` program I use to develop new stuff for sw-render
+
+## TODO
+
+I need to use a code formatting tool. And have it warn on weird variable name styles, because currently I'm mixing both camelCase and snake\_case.
+
+I want this:
+```c
+// Function definition
+int function_name(int *my_param);
+
+// User code
+int myParam;
+int myResult = function_name(&myParam);
+```
