@@ -295,6 +295,27 @@ float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {
 	return 1.0 - MAX(0.0, MIN(1.0, result));
 }
 
+void swr_draw_rectangle(struct SWRender *swr, struct Rect rect, uint32_t color) {
+	swr_crash_if_dest_is_null(swr);
+
+	struct Rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+
+	struct Rect visible = swr_rect_intersect(buffer_rect, rect);
+	int x_offset = MAX(0, rect.x);
+	int y_offset = MAX(0, rect.y);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+
+			int dest_index = out_y * swr->width + out_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+}
+
 void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t color, float radius) {
 	swr_crash_if_dest_is_null(swr);
 

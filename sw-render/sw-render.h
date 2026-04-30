@@ -43,6 +43,7 @@ void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
 void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
 
+void swr_draw_rectangle(struct SWRender *swr, struct Rect rect, uint32_t color);
 void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t color, float radius);
 void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
