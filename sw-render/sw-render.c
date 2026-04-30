@@ -230,7 +230,7 @@ int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t
 	return 0;
 }
 
-void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y) {
+struct Rect swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y) {
 	if (size != swr->last_default_font_size) {
 		int err = fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
 		if (err) {
@@ -241,15 +241,30 @@ void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32
 		swr->last_default_font_size = size;
 	}
 
-	swr_draw_text_ex(swr, text, &swr->default_font, color, x, y);
+	return swr_draw_text_ex(swr, text, &swr->default_font, color, x, y);
 }
 
-// text_color is an 8-bit ARGB value.
-void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y) {
+struct Rect swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y) {
+	return swr_draw_text_impl(swr, text, font_bitmaps, color, x, y, 1 /* Yes, draw to the screen */);
+}
+
+struct Rect swr_measure_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y) {
+	return swr_draw_text_impl(swr, text, font_bitmaps, color, x, y, 0 /* Don't draw anything */);
+}
+
+// Returns text width and height, along with xy offset from the original x,y inputs.
+struct Rect swr_draw_text_impl(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y, int actually_draw) {
 	swr_crash_if_dest_is_null(swr);
 
 	int pen_x = x;
 	int pen_y = y + (font_bitmaps->ascender >> 6);
+
+	struct Rect bounding_box = {
+		.x = 2147483647,
+		.y = 2147483647,
+		.w = 0,
+		.h = 0,
+	};
 
 	for (int i = 0; i < strlen(text); i++) {
 		unsigned char c = *(unsigned char*)&text[i]; // Need to reinterpret signed char as unsigned.
@@ -262,21 +277,41 @@ void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont
 			if (c == '\n') {
 				pen_x = 0;
 			}
+
+			// TODO: Add bounding_box growth here aswell
 			continue;
 		}
 
 		int x_pos = pen_x + glyph.bitmap_left;
 		int y_pos = pen_y - glyph.bitmap_top;
 
-		if (swr_draw_glyph(swr, glyph, color, x_pos, y_pos)) {
-			// Nothing to draw beyond this line.
-			// FIXME: Skip to the next line. Also return if we drew the last visible line.
-			continue;
+		if (actually_draw) {
+			if (swr_draw_glyph(swr, glyph, color, x_pos, y_pos)) {
+				// Nothing to draw beyond this line.
+				// FIXME: Skip to the next line. Also return if we drew the last visible line.
+				continue;
+			}
 		}
+
+		// Bounding box growth
+		int min_x = x_pos;
+		int min_y = y_pos;
+		int max_x = x_pos + glyph.width;
+		int max_y = y_pos + glyph.rows;
+		if (min_x < bounding_box.x) bounding_box.x = min_x;
+		if (min_y < bounding_box.y) bounding_box.y = min_y;
+		if (max_x > bounding_box.w) bounding_box.w = max_x;
+		if (max_y > bounding_box.h) bounding_box.h = max_y;
 
 		pen_x += glyph.advance_x >> 6;
 		pen_y += glyph.advance_y >> 6;
 	}
+
+	bounding_box.w -= bounding_box.x;
+	bounding_box.h -= bounding_box.y;
+	bounding_box.x -= x;
+	bounding_box.y -= y;
+	return bounding_box;
 }
 
 float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {

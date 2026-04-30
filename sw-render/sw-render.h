@@ -36,9 +36,12 @@ void swr_set_output(struct SWRender *swr, uint32_t *buffer, int width, int heigh
 uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
+// Text measurement function (Doesn't work with swr_draw_text. Only works in conjunction with swr_draw_text_ex right now.)
+struct Rect swr_measure_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn.
+
 // Drawing functions
-void swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
-void swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y);
+struct Rect swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
+struct Rect swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
 void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
@@ -53,6 +56,7 @@ void swr_convert_image_abgr_to_argb(uint32_t *img, int length); // These two are
 
 // Internal functions
 void swr_crash_if_dest_is_null(struct SWRender *swr);
+struct Rect swr_draw_text_impl(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y, int actually_draw);
 int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t color, int img_x, int img_y);
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b);
 uint32_t swr_abgr_to_argb(uint32_t abgr);
