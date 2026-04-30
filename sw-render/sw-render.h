@@ -40,6 +40,7 @@ uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 struct Rect swr_measure_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn.
 
 // Drawing functions
+void swr_draw_fill_background(struct SWRender *swr, uint8_t red, uint8_t green, uint8_t blue);
 struct Rect swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 struct Rect swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
 

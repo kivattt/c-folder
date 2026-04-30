@@ -123,6 +123,18 @@ void swr_convert_image_argb_to_abgr(uint32_t *img, int length) {
 	return swr_convert_image_abgr_to_argb(img, length);
 }
 
+void swr_draw_fill_background(struct SWRender *swr, uint8_t red, uint8_t green, uint8_t blue) {
+	// A background with transparency behaves strangely, so force it to be fully opaque (255).
+	uint32_t color = swr_rgba(red, green, blue, 255);
+
+	for (int y = 0; y < swr->height; y++) {
+		for (int x = 0; x < swr->width; x++) {
+			int index = y * swr->width + x;
+			swr->dest[index] = color;
+		}
+	}
+}
+
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y) {
 	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, 1.0, x, y);
 }
@@ -219,6 +231,7 @@ int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t
 			int img_index = img_sample_y * img.pitch + img_sample_x;
 
 			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
+
 			uint8_t alpha = (float)(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
 			uint32_t img_color = swr_alpha_blend(swr->dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF));
 
