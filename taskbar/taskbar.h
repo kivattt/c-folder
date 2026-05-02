@@ -49,7 +49,7 @@ struct TaskbarWorkspace {
 	int urgent;
 	int focused;
 	int visible; // ?
-	char *output; // Allocated in read_workspace_json
+	char *output; // Monitor name (allocated in read_workspace_json)
 };
 
 struct Taskbar {
@@ -76,7 +76,7 @@ struct Taskbar {
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
 void taskbar_deinitialize(struct Taskbar *tb);
 void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e);
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale, int bar_height_at_1x_scale);
+void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale);
 
 // Internal functions
 void clock_string(char *s);

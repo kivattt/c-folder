@@ -269,7 +269,7 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	sprintf(tb->filename_lekton_font, "%s/Lekton-Regular-Edited.ttf", assets_folder);
 
 	tb->filename_background = malloc(256);
-	sprintf(tb->filename_background, "%s/background.png", assets_folder);
+	sprintf(tb->filename_background, "%s/background2.png", assets_folder);
 
 	swr_initialize(&tb->swr);
 
@@ -313,20 +313,20 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct Ta
 	printf("\tmouse_y = %i\n", e.mouse_y);*/
 }
 
-void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, int width, int height, float scale /* unused */, int bar_height_at_1x_scale) {
+void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale) {
 	if (tb == NULL) {
 		return;
 	}
+
+	assert(monitor_index >= 0);
+	assert(monitor_index < TASKBAR_MAX_MONITORS);
 
 	struct timespec startTime;
 	if (tb->debug) {
 		clock_gettime(CLOCK_MONOTONIC, &startTime);
 	}
 
-	assert(monitor_index >= 0);
-	assert(monitor_index < TASKBAR_MAX_MONITORS);
-
-	scale = (float)height / tb->background_height;
+	float scale = (float)height / (float)bar_height_at_1x_scale;
 
 	struct TaskbarPerMonitorData *m = &tb->per_monitor_data[monitor_index];
 	if (!m->is_initialized) {
@@ -352,48 +352,67 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, uint32_t *framebuffer, 
 
 	swr_set_output(&tb->swr, framebuffer, width, height);
 
-	// Draw the background with its own scale
+	// Draw background with its own scale
 	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
 	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
 
+	// Draw upper highlight rectangle
+	int highlightHeight = MAX(1.0, floor(2*background_scale));
+	struct Rect rect = {
+		.x = 0,
+		.y = 0,
+		.w = width,
+		.h = highlightHeight,
+	};
+	swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,50));
+
+	// Draw clock on the right
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
-	printf("SCALE: %f\n", scale);
-
+	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
 	char s[3]; // Enough for "10\0"
-	int workspaceXStep = 40*scale;
-	int workspaceX = workspaceXStep / 2;
-	int workspaceSize = 22;
+	int workspaceXStep = 30 * scale;
+	int workspaceX = workspaceXStep / 2.0;
+	int workspaceSize = 22 * scale;
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
 			continue;
 		}
 
-		sprintf(s, "%d", i+1);
-		uint32_t textColor = swr_rgb(255, 255, 255);
-		if (tb->workspaces[i].focused) {
-			float rectWidth = (workspaceSize + 3) * scale;
-			float rectHeight = workspaceSize * scale;
-			float glyphWidth = (8.6 + 3.0) * scale; // FIXME: Make a measure text size function in swr or fontbmp.
-			struct Rect rect = {
-				.x = (float)workspaceX - (rectWidth / 2.0 - glyphWidth / 2.0),
-				//.y = 2.0*scale + (((float)height - 2.0*scale) - rectHeight) / 2.0,
-				.y = scale + (((float)height - scale) - rectHeight) / 2.0,
-				.w = rectWidth,
-				.h = rectHeight,
-			};
-			//swr_draw_rectangle_rounded_outline(&tb->swr, rect, swr_rgb(255,255,255), 6.0, 0.0, 1.0);
-			swr_draw_rectangle_rounded(&tb->swr, rect, swr_rgb(255,255,255), 6.0);
-			textColor = swr_rgb(0, 0, 0);
+		//printf("output: %s, real: %s\n", tb->workspaces[i].output, monitor_name);
+		if (monitor_name != NULL && memcmp(tb->workspaces[i].output, monitor_name, strlen(monitor_name)) != 0) {
+			continue;
 		}
 
-		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, workspaceX, 6*scale);
+		sprintf(s, "%d", i+1);
+		uint32_t textColor = TEXT_COLOR;
+
+		struct Rect rect = {
+			.x = workspaceX,
+			.y = highlightHeight + (((float)height - highlightHeight) - (float)workspaceSize) / 2.0,
+			.w = workspaceSize,
+			.h = workspaceSize,
+		};
+
+		if (tb->workspaces[i].focused) {
+			float radius = 4.0 * scale;
+			//float grow = (scale - 1.0) / 2.0;
+			//swr_draw_rectangle_rounded_outline(&tb->swr, rect, swr_rgb(255,255,255), radius, grow, grow);
+			swr_draw_rectangle_rounded(&tb->swr, rect, swr_rgb(255,255,255), radius);
+			textColor = swr_rgb(0,0,0);
+		}
+
+		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
+		int xPos = (float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x;
+		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
+		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
 		workspaceX += workspaceXStep;
 	}
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 
+	// Draw debug info
 	if (tb->debug) {
 		struct timespec endTime;
 		clock_gettime(CLOCK_MONOTONIC, &endTime);
