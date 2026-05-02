@@ -269,7 +269,7 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	sprintf(tb->filename_lekton_font, "%s/Lekton-Regular-Edited.ttf", assets_folder);
 
 	tb->filename_background = malloc(256);
-	sprintf(tb->filename_background, "%s/background2.png", assets_folder);
+	sprintf(tb->filename_background, "%s/background.png", assets_folder);
 
 	swr_initialize(&tb->swr);
 
