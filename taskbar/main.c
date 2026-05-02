@@ -9,6 +9,7 @@
 #include <linux/input.h>
 
 #include "protocols/wlr-layer-shell-client-protocol.h"
+#include "protocols/xdg-output-client-protocol.h"
 #include "taskbar.h"
 
 #define BAR_HEIGHT 30
@@ -21,6 +22,7 @@ struct Buffer {
 
 struct BarMonitor {
 	struct wl_output *output;
+	struct zxdg_output_v1 *xdg_output;
 	struct wl_surface *surface;
 	struct zwlr_layer_surface_v1 *layer_surface;
 
@@ -30,6 +32,7 @@ struct BarMonitor {
 	int width, height; // surface coords
 	int scale;		   // integer scale (1,2,3...)
 	int configured;
+	char *name;
 
 	struct wl_callback *frame_cb;
 };
@@ -39,6 +42,7 @@ struct wl_registry *registry;
 struct wl_compositor *compositor;
 struct wl_shm *shm;
 struct zwlr_layer_shell_v1 *layer_shell;
+struct zxdg_output_manager_v1 *xdg_output_manager;
 
 struct wl_seat *seat;
 struct wl_pointer *pointer = NULL;
@@ -95,6 +99,35 @@ static void create_buffer(struct Buffer *buf, int width, int height) {
 	buf->busy = 0;
 	wl_buffer_add_listener(buf->wl_buf, &buffer_listener, buf);
 }
+
+/* ================= XDG OUTPUT ================= */
+static void xdg_output_name(void *data, struct zxdg_output_v1 *xdg_output,
+	const char *name)
+{
+	struct BarMonitor *b = data;
+	if (b->name)
+		free(b->name);
+	b->name = strdup(name);
+}
+
+static void xdg_output_description(void *data, struct zxdg_output_v1 *xdg_output,
+	const char *description) {}
+
+static void xdg_output_logical_position(void *data, struct zxdg_output_v1 *xdg_output,
+	int32_t x, int32_t y) {}
+
+static void xdg_output_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
+	int32_t width, int32_t height) {}
+
+static void xdg_output_done(void *data, struct zxdg_output_v1 *xdg_output) {}
+
+static const struct zxdg_output_v1_listener xdg_output_listener = {
+	.name = xdg_output_name,
+	.description = xdg_output_description,
+	.logical_position = xdg_output_logical_position,
+	.logical_size = xdg_output_logical_size,
+	.done = xdg_output_done,
+};
 
 /* ================= OUTPUT (SCALE) ================= */
 static void output_scale(void *data, struct wl_output *output, int32_t scale) {
@@ -241,7 +274,7 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
 
-	taskbar_draw(&taskbar, index, next->data, bw, bh, (float)b->scale, BAR_HEIGHT);
+	taskbar_draw(&taskbar, index, b->name, next->data, bw, bh, BAR_HEIGHT);
 
 	wl_surface_attach(b->surface, next->wl_buf, 0, 0);
 	wl_surface_damage(b->surface, 0, 0, bw, bh);
@@ -319,7 +352,7 @@ static void layer_configure(void *data,
 	struct Buffer *buf = &b->buffers[0];
 	int index = b - bars;
 
-	taskbar_draw(&taskbar, index, buf->data, bw, bh, (float)b->scale, BAR_HEIGHT);
+	taskbar_draw(&taskbar, index, b->name, buf->data, bw, bh, BAR_HEIGHT);
 
 	wl_surface_attach(b->surface, buf->wl_buf, 0, 0);
 	wl_surface_damage(b->surface, 0, 0, bw, bh);
@@ -377,6 +410,13 @@ static void create_bar(struct BarMonitor *b) {
 		&layer_listener, b);
 
 	wl_surface_commit(b->surface);
+
+	/* Get xdg-output for this monitor */
+	if (xdg_output_manager) {
+		b->xdg_output = zxdg_output_manager_v1_get_xdg_output(
+			xdg_output_manager, b->output);
+		zxdg_output_v1_add_listener(b->xdg_output, &xdg_output_listener, b);
+	}
 }
 
 /* ================= REGISTRY ================= */
@@ -396,6 +436,10 @@ static void registry_add(void *data, struct wl_registry *reg,
 		layer_shell = wl_registry_bind(reg, name,
 			&zwlr_layer_shell_v1_interface, 1);
 
+	else if (strcmp(interface, "zxdg_output_manager_v1") == 0)
+		xdg_output_manager = wl_registry_bind(reg, name,
+			&zxdg_output_manager_v1_interface, 2);
+
 	else if (strcmp(interface, "wl_seat") == 0) {
 		seat = wl_registry_bind(reg, name,
 			&wl_seat_interface, 5);
@@ -410,6 +454,7 @@ static void registry_add(void *data, struct wl_registry *reg,
 		memset(b, 0, sizeof(*b));
 
 		b->scale = 1;
+		b->name = NULL;
 
 		b->output = wl_registry_bind(reg, name,
 			&wl_output_interface, 2);
