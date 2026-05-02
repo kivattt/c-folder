@@ -1,3 +1,4 @@
+#define NDEBUG
 #include <assert.h>
 
 #include <raylib.h>
@@ -22,6 +23,7 @@ int main() {
 	if (err) {
 		return err;
 	}
+	tb.debug = 1;
 
 	while (!WindowShouldClose()) {
 		if (IsKeyDown(KEY_Q)) {
@@ -34,8 +36,8 @@ int main() {
 		// Clear the frame buffer
 		memset(image, 0, image_size);
 
-		int bar_height = 100;
-		taskbar_draw(&tb, 0, image, window_width, window_height, 1.0 /* unused... */, bar_height);
+		int bar_height = 30;
+		taskbar_draw(&tb, 0, NULL /* monitor_name */, image, window_width, window_height, bar_height);
 
 		// SLOW: Raylib expects RGBA, while taskbar_draw uses ARGB.
 		swr_convert_image_argb_to_abgr(image, image_width*image_height);
