@@ -89,31 +89,31 @@ void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index
 	free(m->debug_string);
 }
 
-bool eq(sj_Value val, char *s) {
+bool taskbar_json_eq(sj_Value val, char *s) {
 	size_t len = val.end - val.start;
 	return strlen(s) == len && !memcmp(s, val.start, len);
 }
 
 // Returns non-zero on error
-int read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root) {
+int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root) {
 	memset(workspace, 0, sizeof(struct TaskbarWorkspace));
 
 	int hasNum = 0;
 
 	sj_Value key, val;
 	while (sj_iter_object(r, root, &key, &val)) {
-		if (eq(key, "urgent")) {
+		if (taskbar_json_eq(key, "urgent")) {
 			workspace->urgent = val.start[0] == 't';
-		} else if (eq(key, "focused")) {
+		} else if (taskbar_json_eq(key, "focused")) {
 			workspace->focused = val.start[0] == 't';
-		} else if (eq(key, "visible")) {
+		} else if (taskbar_json_eq(key, "visible")) {
 			workspace->visible = val.start[0] == 't';
-		} else if (eq(key, "output")) {
+		} else if (taskbar_json_eq(key, "output")) {
 			size_t len = val.end - val.start;
 			workspace->output = malloc(len + 1);
 			workspace->output[len] = 0;
 			memcpy(workspace->output, val.start, len);
-		} else if (eq(key, "num")) {
+		} else if (taskbar_json_eq(key, "num")) {
 			hasNum = 1;
 			workspace->num = atoi(val.start);
 			// Bounds check for our hardcoded length 10 workspaces array
@@ -125,44 +125,28 @@ int read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Val
 	return !hasNum;
 }
 
-// TEMPORARY: REMOVE THIS REMOVE THIS REMOVE THIS
-void print_workspace(struct TaskbarWorkspace workspace) {
-	printf("\tNum: %i\n", workspace.num);
-	printf("\tUrgent: %i\n", workspace.urgent);
-	printf("\tFocused: %i\n", workspace.focused);
-	printf("\tVisible: %i\n", workspace.visible);
-	if (workspace.output == NULL) {
-		printf("\tOutput: NULL\n");
-	} else {
-		printf("Output: %s\n", workspace.output);
-	}
-}
-
 // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
-void *sway_ipc_thread(void *taskbar) {
+void *taskbar_sway_ipc_thread(void *taskbar) {
 	struct Taskbar *tb = taskbar;
 
-	struct SwayIPC ipc;
-	swayipc_initialize(&ipc);
+	swayipc_initialize(&tb->ipc);
 
-	int err = swayipc_connect(&ipc);
+	int err = swayipc_connect(&tb->ipc);
 	if (err) {
 		return NULL;
 	}
 
 	// Set up workspaces with GET_WORKSPACES message
 	int headerSize = 14; // 6 + 4 + 4
-	sj_Reader r = sj_reader(ipc.initialWorkspacesPacket + headerSize, ipc.initialWorkspacesPacketSize - headerSize);
+	sj_Reader r = sj_reader(tb->ipc.initialWorkspacesPacket + headerSize, tb->ipc.initialWorkspacesPacketSize - headerSize);
 	sj_Value root = sj_read(&r);
 	sj_Value element;
 	while (sj_iter_array(&r, root, &element)) {
 		struct TaskbarWorkspace workspace;
-		int err = read_workspace_json(&workspace, &r, element);
+		int err = taskbar_read_workspace_json(&workspace, &r, element);
 		workspace.exists = 1;
 
 		if (!err) {
-			print_workspace(workspace);
-
 			pthread_mutex_lock(&tb->workspaces_mutex);
 			tb->workspaces[workspace.num - 1] = workspace;
 			pthread_mutex_unlock(&tb->workspaces_mutex);
@@ -172,7 +156,7 @@ void *sway_ipc_thread(void *taskbar) {
 	while (1) {
 		char *packet;
 		int packetSize;
-		swayipc_receive_packet(&ipc, &packet, &packetSize);
+		swayipc_receive_packet(&tb->ipc, &packet, &packetSize);
 
 		if (tb->debug) {
 			printf("PACKET: ");
@@ -197,22 +181,22 @@ void *sway_ipc_thread(void *taskbar) {
 		while (sj_iter_object(&r, root, &key, &val)) {
 			size_t len = val.end - val.start;
 
-			if (eq(key, "change")) {
+			if (taskbar_json_eq(key, "change")) {
 				assert(len <= 6);
 				memcpy(change, val.start, len);
 				change[len] = 0;
-			} else if (eq(key, "old")) {
+			} else if (taskbar_json_eq(key, "old")) {
 				if (val.start[0] == 'n') { // "null"
 					continue;
 				}
 
-				oldErr = read_workspace_json(&old, &r, val);
-			} else if (eq(key, "current")) {
+				oldErr = taskbar_read_workspace_json(&old, &r, val);
+			} else if (taskbar_json_eq(key, "current")) {
 				if (val.start[0] == 'n') { // "null"
 					continue;
 				}
 
-				currentErr = read_workspace_json(&current, &r, val);
+				currentErr = taskbar_read_workspace_json(&current, &r, val);
 			}
 		}
 
@@ -253,7 +237,7 @@ void *sway_ipc_thread(void *taskbar) {
 	}
 
 	// Unreachable...
-	swayipc_deinitialize(&ipc);
+	swayipc_deinitialize(&tb->ipc);
 	return NULL;
 }
 
@@ -281,7 +265,9 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	pthread_mutex_init(&tb->workspaces_mutex, NULL);
 	pthread_t swayThread;
-	pthread_create(&swayThread, NULL, sway_ipc_thread, tb);
+	pthread_create(&swayThread, NULL, taskbar_sway_ipc_thread, tb);
+
+	pthread_mutex_init(&tb->event_mutex, NULL);
 
 	return 0;
 }
@@ -305,8 +291,63 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e) {
-	tb->last_event = e;
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e) {
+	if (tb == NULL) {
+		return;
+	}
+
+	assert(monitor_index >= 0);
+	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	// We don't make use of mouse moved events right now.
+	if (e.type == TB_MouseMoved) {
+		return;
+	}
+
+	if (e.type == TB_ScrollVertical) {
+		pthread_mutex_lock(&tb->workspaces_mutex);
+		int next = -1;
+		int prev = -1;
+		int foundCurrent = 0;
+		for (int i = 0; i < 10; i++) {
+			if (tb->workspaces[i].exists == 0) {
+				continue;
+			}
+
+			if (monitor_name != NULL && memcmp(tb->workspaces[i].output, monitor_name, strlen(monitor_name)) != 0) {
+				continue;
+			}
+
+			if (foundCurrent) {
+				next = i;
+				break;
+			}
+
+			if (tb->workspaces[i].focused) {
+				foundCurrent = 1;
+			}
+
+			if (!foundCurrent) {
+				prev = i;
+			}
+		}
+
+		if (e.scroll_value > 0) { // Scroll down (right)
+			if (next != -1) swayipc_switch_workspace(&tb->ipc, next + 1);
+		} else if (e.scroll_value < 0) { // Scroll up (left)
+			if (prev != -1) swayipc_switch_workspace(&tb->ipc, prev + 1);
+		}
+
+		pthread_mutex_unlock(&tb->workspaces_mutex);
+		return;
+	}
+
+	// Clicks are handled in taskbar_draw because it's easier to debug the hitboxes
+	pthread_mutex_lock(&tb->event_mutex);
+	tb->last_event = tb->event;
+	e.monitor_index = monitor_index;
+	tb->event = e;
+	pthread_mutex_unlock(&tb->event_mutex);
 
 	/*printf("input on monitor %i (type: %i):\n", monitor_index, e.type);
 	printf("\tmouse_x = %i\n", e.mouse_x);
@@ -320,6 +361,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	pthread_mutex_lock(&tb->event_mutex);
 
 	struct timespec startTime;
 	if (tb->debug) {
@@ -337,7 +380,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	if (m->frame_number % 30 == 0) {
 		char clock[8+1];
-		clock_string(clock);
+		taskbar_clock_string(clock);
 		if (clock[7] == '0' || clock[7] == '5') {
 			memcpy(tb->clock, clock, 8+1);
 			m->max_render_time_last_5s = 0.0;
@@ -354,7 +397,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	// Draw background with its own scale
 	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
-	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
+	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
+	swr_draw_fill_background(&tb->swr, 0, 0, 0);
 
 	// Draw upper highlight rectangle
 	int highlightHeight = MAX(1.0, floor(2*background_scale));
@@ -374,8 +418,10 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	pthread_mutex_lock(&tb->workspaces_mutex);
 	char s[3]; // Enough for "10\0"
 	int workspaceXStep = 30 * scale;
-	int workspaceX = workspaceXStep / 2.0;
-	int workspaceSize = 22 * scale;
+	int workspaceSize = 23 * scale;
+	int workspaceX = ((float)height - (float)highlightHeight - (float)workspaceSize) / 2.0;
+	int workspaceXInitial = workspaceX;
+	int clickedOnWorkspace = 0;
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
 			continue;
@@ -391,26 +437,65 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		struct Rect rect = {
 			.x = workspaceX,
-			.y = highlightHeight + (((float)height - highlightHeight) - (float)workspaceSize) / 2.0,
+			.y = ceil(highlightHeight + (((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0),
 			.w = workspaceSize,
 			.h = workspaceSize,
 		};
 
 		if (tb->workspaces[i].focused) {
 			float radius = 4.0 * scale;
-			//float grow = (scale - 1.0) / 2.0;
-			//swr_draw_rectangle_rounded_outline(&tb->swr, rect, swr_rgb(255,255,255), radius, grow, grow);
-			swr_draw_rectangle_rounded(&tb->swr, rect, swr_rgb(255,255,255), radius);
-			textColor = swr_rgb(0,0,0);
+			float grow = (scale - 1.0) / 2.0;
+			// We want to grow inner and outer by an integer amount to avoid blurry output
+			float growInner = (int)(grow+0.5);
+			float growOuter = 1.0 + (int)grow;
+			if (scale < 1.0) {
+				growInner = 0.0;
+				growOuter = 0.0;
+			}
+
+			// Inner
+			swr_draw_rectangle_rounded(&tb->swr, rect, 0x3063eb72, radius);
+			// Outline
+			swr_draw_rectangle_rounded_outline(&tb->swr, rect, 0xFF63eb72, radius, growInner, growOuter);
 		}
 
+		// Draw workspace number
 		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
-		int xPos = (float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x;
+		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
+		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgb(0,0,0), xPos+1, yPos+1); // DROPSHADOW
 		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
+
+		// Draw hitboxes
+		struct Rect hitboxRect = rect;
+		hitboxRect.x = workspaceX - workspaceXInitial;
+		hitboxRect.y = 0;
+		hitboxRect.w = workspaceXStep;
+		hitboxRect.h = height;
+		if (tb->debug) {
+			int c = 255;
+			if (i & 1) c = 0;
+			swr_draw_rectangle(&tb->swr, hitboxRect, swr_rgba(255, c, c, 100));
+		}
+
+		if (!clickedOnWorkspace) {
+			struct TaskbarEvent e = tb->event;
+			struct TaskbarEvent lastEvent = tb->last_event;
+			if (e.monitor_index == monitor_index) {
+				if (e.type == TB_Mouse1Pressed && lastEvent.type != TB_Mouse1Pressed) {
+					if (swr_is_point_in_rect(hitboxRect, e.mouse_x, e.mouse_y)) {
+						swayipc_switch_workspace(&tb->ipc, i+1);
+						clickedOnWorkspace = 1;
+						memset(&tb->event, 0, sizeof(struct TaskbarEvent)); // Reset the input event
+					}
+				}
+			}
+		}
+
 		workspaceX += workspaceXStep;
 	}
 	pthread_mutex_unlock(&tb->workspaces_mutex);
+	pthread_mutex_unlock(&tb->event_mutex);
 
 	// Draw debug info
 	if (tb->debug) {
@@ -419,14 +504,16 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		double renderTimeMs = 1000 * ((endTime.tv_sec - startTime.tv_sec) + (endTime.tv_nsec - startTime.tv_nsec) * 1e-9);
 		m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
 		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
-		swr_draw_text(&tb->swr, m->debug_string, 22*scale, swr_rgb(255,255,255), width - 480, 0);
+
+		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgb(255,255,255), 0, 0);
+		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, 6*scale);
 	}
 
 	m->last_scale = scale;
 }
 
 // s needs to be atleast 8 bytes
-void clock_string(char *s) {
+void taskbar_clock_string(char *s) {
 	struct timeval tv;
 	struct timezone tz;
 	int error = gettimeofday(&tv, &tz);

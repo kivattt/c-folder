@@ -57,7 +57,7 @@ int main() {
 		ClearBackground(BLACK);
 		DrawTexture(texture, 0, 0, WHITE); // Draw our software-rendered image
 		if (tb.debug) {
-			DrawFPS(GetScreenWidth() - 600, 5);
+			DrawFPS((float)GetScreenWidth() / 2.0, 2);
 		}
 		EndDrawing();
 

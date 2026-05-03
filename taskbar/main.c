@@ -196,7 +196,7 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(&taskbar, index, e);
+	taskbar_handle_input_event(&taskbar, index, b->name, e);
 }
 
 static void pointer_button(void *data, struct wl_pointer *p,
@@ -231,18 +231,33 @@ static void pointer_button(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(&taskbar, index, e);
+	taskbar_handle_input_event(&taskbar, index, b->name, e);
 }
 
-static void pointer_axis(void *data, struct wl_pointer *p,
-	uint32_t time, uint32_t axis, wl_fixed_t value) {}
+static void pointer_axis(void *data, struct wl_pointer *p, uint32_t time, uint32_t axis, wl_fixed_t value) {
+	if (!current_surface) return;
+
+	struct BarMonitor *b = find_bar(current_surface);
+	if (!b) return;
+
+	int index = b - bars;
+
+	if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
+		double amount = wl_fixed_to_double(value);
+		struct TaskbarEvent e = {
+			.type = TB_ScrollVertical,
+			.mouse_x = current_x,
+			.mouse_y = current_y,
+			.scroll_value = amount,
+		};
+		taskbar_handle_input_event(&taskbar, index, b->name, e);
+	}
+}
+
 static void pointer_frame(void *data, struct wl_pointer *p) {}
-static void pointer_axis_source(void *data, struct wl_pointer *p,
-	uint32_t source) {}
-static void pointer_axis_stop(void *data, struct wl_pointer *p,
-	uint32_t time, uint32_t axis) {}
-static void pointer_axis_discrete(void *data, struct wl_pointer *p,
-	uint32_t axis, int32_t discrete) {}
+static void pointer_axis_source(void *data, struct wl_pointer *p, uint32_t source) {}
+static void pointer_axis_stop(void *data, struct wl_pointer *p, uint32_t time, uint32_t axis) {}
+static void pointer_axis_discrete(void *data, struct wl_pointer *p, uint32_t axis, int32_t discrete) {}
 
 static const struct wl_pointer_listener pointer_listener = {
 	.enter = pointer_enter,
@@ -477,7 +492,7 @@ int main() {
 		printf("taskbar_initialize returned an error\n");
 		return err;
 	}
-	taskbar.debug = 1;
+	taskbar.debug = 0;
 
 	display = wl_display_connect(NULL);
 	if (!display) {

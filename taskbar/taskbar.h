@@ -21,12 +21,16 @@ enum TaskbarEventType {
 
 	TB_Mouse2Pressed = 4,
 	TB_Mouse2Released = 5,
+
+	TB_ScrollVertical = 6, // See: TaskbarEvent->scroll_value
 };
 
 struct TaskbarEvent {
 	enum TaskbarEventType type;
+	int monitor_index;
 	int mouse_x;
 	int mouse_y;
+	double scroll_value;
 };
 
 // Per-monitor data
@@ -57,7 +61,9 @@ struct Taskbar {
 
 	// Global data
 	struct SWRender swr;
-	struct TaskbarEvent last_event;
+	struct SwayIPC ipc;
+	struct TaskbarEvent event, last_event;
+	pthread_mutex_t event_mutex; // For event, last_event
 	char clock[8+1]; // Enough for "01:23:45" (including the null byte)
 	char *filename_lekton_font;
 	char *filename_background;
@@ -75,14 +81,14 @@ struct Taskbar {
 
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
 void taskbar_deinitialize(struct Taskbar *tb);
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, struct TaskbarEvent e);
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char* monitor_name, struct TaskbarEvent e);
 void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale);
 
 // Internal functions
-void clock_string(char *s);
+void taskbar_clock_string(char *s);
 int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, float scale);
 void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index);
 int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index, float scale);
-void *sway_ipc_thread(void *taskbar); // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
-bool eq(sj_Value, char *s);
-int read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root);
+void *taskbar_sway_ipc_thread(void *taskbar); // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
+bool taskbar_json_eq(sj_Value, char *s);
+int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root);
