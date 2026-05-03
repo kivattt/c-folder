@@ -196,7 +196,9 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(&taskbar, index, b->name, e);
+	int bw = b->width * b->scale;
+	int bh = b->height * b->scale;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
 }
 
 static void pointer_button(void *data, struct wl_pointer *p,
@@ -231,7 +233,9 @@ static void pointer_button(void *data, struct wl_pointer *p,
 		.mouse_y = current_y,
 	};
 
-	taskbar_handle_input_event(&taskbar, index, b->name, e);
+	int bw = b->width * b->scale;
+	int bh = b->height * b->scale;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
 }
 
 static void pointer_axis(void *data, struct wl_pointer *p, uint32_t time, uint32_t axis, wl_fixed_t value) {
@@ -250,7 +254,9 @@ static void pointer_axis(void *data, struct wl_pointer *p, uint32_t time, uint32
 			.mouse_y = current_y,
 			.scroll_value = amount,
 		};
-		taskbar_handle_input_event(&taskbar, index, b->name, e);
+		int bw = b->width * b->scale;
+		int bh = b->height * b->scale;
+		taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
 	}
 }
 

@@ -81,7 +81,7 @@ struct Taskbar {
 
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
 void taskbar_deinitialize(struct Taskbar *tb);
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char* monitor_name, struct TaskbarEvent e);
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale);
 void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale);
 
 // Internal functions

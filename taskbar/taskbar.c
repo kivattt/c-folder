@@ -267,8 +267,6 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	pthread_t swayThread;
 	pthread_create(&swayThread, NULL, taskbar_sway_ipc_thread, tb);
 
-	pthread_mutex_init(&tb->event_mutex, NULL);
-
 	return 0;
 }
 
@@ -291,7 +289,7 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e) {
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale) {
 	if (tb == NULL) {
 		return;
 	}
@@ -299,13 +297,43 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
 
-	// We don't make use of mouse moved events right now.
-	if (e.type == TB_MouseMoved) {
-		return;
+	float scale = (float)height / (float)bar_height_at_1x_scale;
+	int workspaceX = 0;
+	int workspaceXStep = 30 * scale;
+	int workspaceIndexHovered = -1;
+
+	pthread_mutex_lock(&tb->workspaces_mutex);
+	// Find the hovered workspace
+	for (int i = 0; i < 10; i++) {
+		if (tb->workspaces[i].exists == 0) {
+			continue;
+		}
+
+		if (monitor_name != NULL && memcmp(tb->workspaces[i].output, monitor_name, strlen(monitor_name)) != 0) {
+			continue;
+		}
+
+		struct Rect hitbox = {
+			.x = workspaceX,
+			.y = 0,
+			.w = workspaceXStep,
+			.h = height,
+		};
+
+		if (swr_is_point_in_rect(hitbox, e.mouse_x, e.mouse_y)) {
+			workspaceIndexHovered = i;
+			break;
+		}
+
+		workspaceX += workspaceXStep;
 	}
 
-	if (e.type == TB_ScrollVertical) {
-		pthread_mutex_lock(&tb->workspaces_mutex);
+	// We don't make use of mouse moved events right now.
+	if (e.type == TB_MouseMoved) {
+		if (workspaceIndexHovered == -1) {
+			goto done;
+		}
+	} else if (e.type == TB_ScrollVertical) {
 		int next = -1;
 		int prev = -1;
 		int foundCurrent = 0;
@@ -338,20 +366,16 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 			if (prev != -1) swayipc_switch_workspace(&tb->ipc, prev + 1);
 		}
 
-		pthread_mutex_unlock(&tb->workspaces_mutex);
-		return;
+	} else if (e.type == TB_Mouse1Pressed) {
+		if (workspaceIndexHovered == -1) {
+			goto done;
+		}
+
+		swayipc_switch_workspace(&tb->ipc, workspaceIndexHovered+1);
 	}
 
-	// Clicks are handled in taskbar_draw because it's easier to debug the hitboxes
-	pthread_mutex_lock(&tb->event_mutex);
-	tb->last_event = tb->event;
-	e.monitor_index = monitor_index;
-	tb->event = e;
-	pthread_mutex_unlock(&tb->event_mutex);
-
-	/*printf("input on monitor %i (type: %i):\n", monitor_index, e.type);
-	printf("\tmouse_x = %i\n", e.mouse_x);
-	printf("\tmouse_y = %i\n", e.mouse_y);*/
+done:
+	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
 void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale) {
@@ -361,8 +385,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
-
-	pthread_mutex_lock(&tb->event_mutex);
 
 	struct timespec startTime;
 	if (tb->debug) {
@@ -420,8 +442,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	int workspaceXStep = 30 * scale;
 	int workspaceSize = 23 * scale;
 	int workspaceX = ((float)height - (float)highlightHeight - (float)workspaceSize) / 2.0;
-	int workspaceXInitial = workspaceX;
-	int clickedOnWorkspace = 0;
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
 			continue;
@@ -466,36 +486,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgb(0,0,0), xPos+1, yPos+1); // DROPSHADOW
 		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
 
-		// Draw hitboxes
-		struct Rect hitboxRect = rect;
-		hitboxRect.x = workspaceX - workspaceXInitial;
-		hitboxRect.y = 0;
-		hitboxRect.w = workspaceXStep;
-		hitboxRect.h = height;
-		if (tb->debug) {
-			int c = 255;
-			if (i & 1) c = 0;
-			swr_draw_rectangle(&tb->swr, hitboxRect, swr_rgba(255, c, c, 100));
-		}
-
-		if (!clickedOnWorkspace) {
-			struct TaskbarEvent e = tb->event;
-			struct TaskbarEvent lastEvent = tb->last_event;
-			if (e.monitor_index == monitor_index) {
-				if (e.type == TB_Mouse1Pressed && lastEvent.type != TB_Mouse1Pressed) {
-					if (swr_is_point_in_rect(hitboxRect, e.mouse_x, e.mouse_y)) {
-						swayipc_switch_workspace(&tb->ipc, i+1);
-						clickedOnWorkspace = 1;
-						memset(&tb->event, 0, sizeof(struct TaskbarEvent)); // Reset the input event
-					}
-				}
-			}
-		}
-
 		workspaceX += workspaceXStep;
 	}
 	pthread_mutex_unlock(&tb->workspaces_mutex);
-	pthread_mutex_unlock(&tb->event_mutex);
 
 	// Draw debug info
 	if (tb->debug) {
