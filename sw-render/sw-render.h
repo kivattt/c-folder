@@ -60,6 +60,7 @@ void swr_crash_if_dest_is_null(struct SWRender *swr);
 struct Rect swr_draw_text_impl(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y, int actually_draw);
 int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t color, int img_x, int img_y);
 struct Rect swr_rect_intersect(struct Rect a, struct Rect b);
+int swr_is_point_in_rect(struct Rect rect, int x, int y);
 uint32_t swr_abgr_to_argb(uint32_t abgr);
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 uint32_t swr_color_tint(uint32_t color, uint32_t tint);

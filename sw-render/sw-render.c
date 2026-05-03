@@ -59,6 +59,16 @@ struct Rect swr_rect_intersect(struct Rect a, struct Rect b) {
 	return out;
 }
 
+int swr_is_point_in_rect(struct Rect rect, int x, int y) {
+	if (rect.w == 0 && rect.h == 0) {
+		return 0;
+	}
+
+	int isXWithin = x >= rect.x && x <= (rect.x+rect.w);
+	int isYWithin = y >= rect.y && y <= (rect.y+rect.h);
+	return isXWithin && isYWithin;
+}
+
 uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	return a << 24 | r << 16 | g << 8 | b;
 }
