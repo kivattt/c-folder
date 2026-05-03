@@ -23,6 +23,7 @@ enum TaskbarEventType {
 	TB_Mouse2Released = 5,
 
 	TB_ScrollVertical = 6, // See: TaskbarEvent->scroll_value
+	TB_MouseLeave = 7,
 };
 
 struct TaskbarEvent {
@@ -62,11 +63,10 @@ struct Taskbar {
 	// Global data
 	struct SWRender swr;
 	struct SwayIPC ipc;
-	struct TaskbarEvent event, last_event;
-	pthread_mutex_t event_mutex; // For event, last_event
 	char clock[8+1]; // Enough for "01:23:45" (including the null byte)
 	char *filename_lekton_font;
 	char *filename_background;
+	int hovered_workspace_index;
 
 	unsigned char *background_bitmap;
 	int background_width;

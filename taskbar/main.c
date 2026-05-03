@@ -174,6 +174,21 @@ static void pointer_enter(void *data, struct wl_pointer *p,
 static void pointer_leave(void *data, struct wl_pointer *p,
 	uint32_t serial, struct wl_surface *surface)
 {
+	if (!current_surface) return;
+
+	struct BarMonitor *b = find_bar(current_surface);
+	if (!b) return;
+
+	int index = b - bars;
+
+	struct TaskbarEvent e = {
+		.type = TB_MouseLeave,
+	};
+
+	int bw = b->width * b->scale;
+	int bh = b->height * b->scale;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+
 	current_surface = NULL;
 }
 

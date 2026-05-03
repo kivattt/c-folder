@@ -248,6 +248,8 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 		assert(0);
 	}
 
+	tb->hovered_workspace_index = -1;
+
 	// Wasteful to do multiple allocations, but it is simple...
 	tb->filename_lekton_font = malloc(256);
 	sprintf(tb->filename_lekton_font, "%s/Lekton-Regular-Edited.ttf", assets_folder);
@@ -328,8 +330,11 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 		workspaceX += workspaceXStep;
 	}
 
-	// We don't make use of mouse moved events right now.
-	if (e.type == TB_MouseMoved) {
+	tb->hovered_workspace_index = workspaceIndexHovered;
+
+	if (e.type == TB_MouseLeave) {
+		tb->hovered_workspace_index = -1;
+	} else if (e.type == TB_MouseMoved) {
 		if (workspaceIndexHovered == -1) {
 			goto done;
 		}
@@ -477,6 +482,10 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			swr_draw_rectangle_rounded(&tb->swr, rect, 0x3063eb72, radius);
 			// Outline
 			swr_draw_rectangle_rounded_outline(&tb->swr, rect, 0xFF63eb72, radius, growInner, growOuter);
+		}
+
+		if (tb->hovered_workspace_index == i) {
+			swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,50));
 		}
 
 		// Draw workspace number
