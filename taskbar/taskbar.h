@@ -71,7 +71,7 @@ struct Taskbar {
 
 	struct TaskbarEvent last_event;
 	int is_mouse_inside;
-	int need_handle_input;
+	int need_handle_input; // When a workspace changed, the hovered one may have changed even when no new mouse inputs were handled. Forces a TB_MouseMoved event in this case.
 	pthread_mutex_t need_handle_input_mutex;
 
 	unsigned char *background_bitmap;

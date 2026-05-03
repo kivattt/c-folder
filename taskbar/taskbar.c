@@ -109,7 +109,7 @@ int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r
 			workspace->visible = val.start[0] == 't';
 		} else if (taskbar_json_eq(key, "output")) {
 			size_t len = val.end - val.start;
-			workspace->output = malloc(len + 1);
+			workspace->output = malloc(len + 1); // free'd in taskbar_deinitialize()
 			workspace->output[len] = 0;
 			memcpy(workspace->output, val.start, len);
 		} else if (taskbar_json_eq(key, "num")) {
@@ -423,7 +423,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		pthread_mutex_lock(&tb->need_handle_input_mutex);
 		if (tb->is_mouse_inside && tb->need_handle_input) {
 			tb->need_handle_input = 0;
-			taskbar_handle_input_event(tb, monitor_index, monitor_name, tb->last_event, width, height, bar_height_at_1x_scale);
+			struct TaskbarEvent e = tb->last_event;
+			e.type = TB_MouseMoved;
+			taskbar_handle_input_event(tb, monitor_index, monitor_name, e, width, height, bar_height_at_1x_scale);
 		}
 		pthread_mutex_unlock(&tb->need_handle_input_mutex);
 	}
@@ -466,13 +468,14 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	// Draw upper highlight rectangle
 	int highlightHeight = MAX(1.0, floor(2*background_scale));
+	int highlightAlpha = 50;
 	struct Rect rect = {
 		.x = 0,
 		.y = 0,
 		.w = width,
 		.h = highlightHeight,
 	};
-	swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,50));
+	swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
 
 	// Draw clock on the right
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
@@ -483,13 +486,13 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	char s[3]; // Enough for "10\0"
 	int workspaceXStep = 30 * scale;
 	int workspaceSize = 23 * scale;
-	int workspaceX = ((float)height - (float)highlightHeight - (float)workspaceSize) / 2.0;
+	int workspaceX = ceil((((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0);
+	int workspaceXInitial = workspaceX;
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
 			continue;
 		}
 
-		//printf("output: %s, real: %s\n", tb->workspaces[i].output, monitor_name);
 		if (monitor_name != NULL && memcmp(tb->workspaces[i].output, monitor_name, strlen(monitor_name)) != 0) {
 			continue;
 		}
@@ -504,6 +507,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			.h = workspaceSize,
 		};
 
+		// Draw focus outline when workspace is focused
 		if (tb->workspaces[i].focused) {
 			float radius = 4.0 * scale;
 			float grow = (scale - 1.0) / 2.0;
@@ -521,15 +525,22 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			swr_draw_rectangle_rounded_outline(&tb->swr, rect, 0xFF63eb72, radius, growInner, growOuter);
 		}
 
+		// Draw hovered rectangle when workspace is hovered
 		if (tb->hovered_workspace_index == i) {
-			swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,50));
+			struct Rect hoveredRect = {
+				.x = workspaceX - workspaceXInitial,
+				.y = highlightHeight,
+				.w = workspaceXStep,
+				.h = height - highlightHeight,
+			};
+			swr_draw_rectangle(&tb->swr, hoveredRect, swr_rgba(255,255,255,highlightAlpha));
 		}
 
 		// Draw workspace number
 		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
 		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
-		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgb(0,0,0), xPos+1, yPos+1); // DROPSHADOW
+		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgba(0,0,0,100), xPos+1, yPos+1); // DROPSHADOW
 		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
 
 		workspaceX += workspaceXStep;
