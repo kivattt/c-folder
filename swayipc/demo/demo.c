@@ -10,6 +10,9 @@ int main() {
 		return 1;
 	}
 
+	// Switch to workspace 1
+	swayipc_switch_workspace(&ipc, 1);
+
 	// Print the initial GET_WORKSPACES response
 	write(1, ipc.initialWorkspacesPacket, ipc.initialWorkspacesPacketSize);
 	printf("\n");

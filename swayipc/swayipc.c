@@ -14,6 +14,9 @@ void swayipc_deinitialize(struct SwayIPC *ipc) {
 
 	free(ipc->initialWorkspacesPacket);
 	ipc->initialWorkspacesPacket = NULL;
+
+	close(ipc->socketFileDescriptor);
+	ipc->socketFileDescriptor = -1;
 }
 
 // Returns non-zero on error
@@ -62,7 +65,7 @@ int swayipc_connect(struct SwayIPC *ipc) {
 	assert(count != 0); // end of file
 
 	// Send subscribe to "workspace" message
-	//                 13 (payload len) 2 (payload type)
+	//                 13 (payload len) 2 (payload type SUBSCRIBE)
 	command = "i3-ipc\x0d\x00\x00\x00\x02\x00\x00\x00[\"workspace\"]";
 	commandLength = 27; // 6 + 4 + 4 + 13
 	if (write(ipc->socketFileDescriptor, command, commandLength) != commandLength) {
@@ -75,6 +78,33 @@ int swayipc_connect(struct SwayIPC *ipc) {
 	assert(count <= ipc->packetBufferSize);
 	assert(count != -1); // error
 	assert(count != 0); // end of file
+
+	return 0;
+}
+
+// workspace_num has to be 1..10 inclusive. Returns non-zero on error.
+int swayipc_switch_workspace(struct SwayIPC *ipc, int workspace_num) {
+	assert(workspace_num >= 1);
+	assert(workspace_num <= 10);
+
+	int headerSize = 14;
+
+	int payloadLen = snprintf(NULL, 0, "workspace %d", workspace_num);
+	char *command = malloc(headerSize + payloadLen + 1);
+	memcpy(command, "i3-ipc", 6);
+	memcpy(command + 6, &payloadLen, 4); // Payload length
+	memset(command + 10, 0, 4); // Paylot type of 0 is RUN_COMMAND
+
+	snprintf(command + headerSize, payloadLen + 1, "workspace %d", workspace_num);
+
+	// Send the "workspace ..." command
+	if (write(ipc->socketFileDescriptor, command, headerSize+payloadLen) != headerSize + payloadLen) {
+		return 1;
+	}
+
+	free(command);
+
+	// We should really receive ( read() ) and ignore the answer here, but it blocks like crazy for some reason.
 
 	return 0;
 }
