@@ -167,8 +167,14 @@ static void pointer_enter(void *data, struct wl_pointer *p,
 	wl_fixed_t sx, wl_fixed_t sy)
 {
 	current_surface = surface;
-	current_x = wl_fixed_to_int(sx);
-	current_y = wl_fixed_to_int(sy);
+
+	if (!current_surface) return;
+
+	struct BarMonitor *b = find_bar(current_surface);
+	if (!b) return;
+
+	current_x = wl_fixed_to_int(sx * b->scale);
+	current_y = wl_fixed_to_int(sy * b->scale);
 }
 
 static void pointer_leave(void *data, struct wl_pointer *p,
@@ -200,8 +206,8 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 	struct BarMonitor *b = find_bar(current_surface);
 	if (!b) return;
 
-	current_x = wl_fixed_to_int(sx);
-	current_y = wl_fixed_to_int(sy);
+	current_x = wl_fixed_to_int(sx * b->scale);
+	current_y = wl_fixed_to_int(sy * b->scale);
 
 	int index = b - bars;
 
