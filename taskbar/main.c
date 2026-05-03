@@ -508,9 +508,6 @@ static void registry_add(void *data, struct wl_registry *reg,
 	}
 
 	else if (strcmp(interface, "wl_output") == 0) {
-		bars = realloc(bars,
-			sizeof(struct BarMonitor) * (n_monitors + 1));
-
 		struct BarMonitor *b = &bars[n_monitors++];
 		memset(b, 0, sizeof(*b));
 
@@ -539,6 +536,8 @@ int main() {
 		return err;
 	}
 	taskbar.debug = 0;
+
+	bars = malloc(TASKBAR_MAX_MONITORS * sizeof(struct BarMonitor));
 
 	display = wl_display_connect(NULL);
 	if (!display) {
@@ -569,6 +568,8 @@ int main() {
 	}
 
 	taskbar_deinitialize(&taskbar);
+
+	free(bars);
 
 	return 0;
 }
