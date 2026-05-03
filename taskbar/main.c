@@ -105,6 +105,8 @@ static void xdg_output_name(void *data, struct zxdg_output_v1 *xdg_output,
 	const char *name)
 {
 	struct BarMonitor *b = data;
+	if (!b) return;
+
 	if (b->name)
 		free(b->name);
 	b->name = strdup(name);
@@ -132,6 +134,8 @@ static const struct zxdg_output_v1_listener xdg_output_listener = {
 /* ================= OUTPUT (SCALE) ================= */
 static void output_scale(void *data, struct wl_output *output, int32_t scale) {
 	struct BarMonitor *b = data;
+	if (!b) return;
+
 	if (scale < 1) scale = 1;
 	b->scale = scale;
 }
@@ -173,8 +177,21 @@ static void pointer_enter(void *data, struct wl_pointer *p,
 	struct BarMonitor *b = find_bar(current_surface);
 	if (!b) return;
 
+	int index = b - bars;
+
 	current_x = wl_fixed_to_int(sx * b->scale);
 	current_y = wl_fixed_to_int(sy * b->scale);
+
+	struct TaskbarEvent e = {
+		.type = TB_MouseEnter,
+		.mouse_x = current_x,
+		.mouse_y = current_y,
+	};
+
+	int bw = b->width * b->scale;
+	int bh = b->height * b->scale;
+
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
 }
 
 static void pointer_leave(void *data, struct wl_pointer *p,
@@ -302,6 +319,7 @@ static const struct wl_pointer_listener pointer_listener = {
 
 static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
 	struct BarMonitor *b = data;
+	if (!b) return;
 
 	wl_callback_destroy(cb);
 	b->frame_cb = NULL;
@@ -366,6 +384,7 @@ static void layer_configure(void *data,
 	uint32_t height)
 {
 	struct BarMonitor *b = data;
+	if (!b) return;
 
 	zwlr_layer_surface_v1_ack_configure(surface, serial);
 

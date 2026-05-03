@@ -23,7 +23,8 @@ enum TaskbarEventType {
 	TB_Mouse2Released = 5,
 
 	TB_ScrollVertical = 6, // See: TaskbarEvent->scroll_value
-	TB_MouseLeave = 7,
+	TB_MouseEnter = 7,
+	TB_MouseLeave = 8,
 };
 
 struct TaskbarEvent {
@@ -68,6 +69,11 @@ struct Taskbar {
 	char *filename_background;
 	int hovered_workspace_index;
 
+	struct TaskbarEvent last_event;
+	int is_mouse_inside;
+	int need_handle_input;
+	pthread_mutex_t need_handle_input_mutex;
+
 	unsigned char *background_bitmap;
 	int background_width;
 	int background_height;
@@ -92,3 +98,4 @@ int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index
 void *taskbar_sway_ipc_thread(void *taskbar); // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
 bool taskbar_json_eq(sj_Value, char *s);
 int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root);
+int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int width, int height, int mouse_x, int mouse_y, int bar_height_at_1x_scale);

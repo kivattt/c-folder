@@ -1,5 +1,4 @@
 #include "taskbar.h"
-#include <bits/time.h>
 
 #define SJ_IMPL
 #include "sj.h"
@@ -128,7 +127,6 @@ int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r
 // Modifies only taskbar.workspaces and taskbar.workspaces_mutex
 void *taskbar_sway_ipc_thread(void *taskbar) {
 	struct Taskbar *tb = taskbar;
-
 	swayipc_initialize(&tb->ipc);
 
 	int err = swayipc_connect(&tb->ipc);
@@ -200,9 +198,12 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 			}
 		}
 
+		int workspace_update = 0;
 		if (memcmp(change, "empty\0", 6) == 0) {
 			// Delete the workspace
 			if (!currentErr) {
+				workspace_update = 1;
+
 				pthread_mutex_lock(&tb->workspaces_mutex);
 				tb->workspaces[current.num - 1].exists = 0;
 				pthread_mutex_unlock(&tb->workspaces_mutex);
@@ -210,6 +211,8 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 		} else if (memcmp(change, "init\0", 5) == 0) {
 			// Create new workspace without necessarily focusing it
 			if (!currentErr) {
+				workspace_update = 1;
+
 				pthread_mutex_lock(&tb->workspaces_mutex);
 				tb->workspaces[current.num - 1] = current;
 				tb->workspaces[current.num - 1].exists = 1;
@@ -218,6 +221,8 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 		} else {
 			// Old
 			if (!oldErr) {
+				workspace_update = 1;
+
 				// Update the workspace
 				pthread_mutex_lock(&tb->workspaces_mutex);
 				tb->workspaces[old.num - 1].focused = 0;
@@ -226,6 +231,8 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 
 			// Current
 			if (!currentErr) {
+				workspace_update = 1;
+
 				current.exists = 1;
 				current.focused = 1;
 				// Update the workspace
@@ -233,6 +240,12 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 				tb->workspaces[current.num - 1] = current;
 				pthread_mutex_unlock(&tb->workspaces_mutex);
 			}
+		}
+
+		if (workspace_update) {
+			pthread_mutex_lock(&tb->need_handle_input_mutex);
+			tb->need_handle_input = 1;
+			pthread_mutex_unlock(&tb->need_handle_input_mutex);
 		}
 	}
 
@@ -265,6 +278,8 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	memset(tb->per_monitor_data, 0, TASKBAR_MAX_MONITORS * sizeof(struct TaskbarPerMonitorData));
 
+	pthread_mutex_init(&tb->need_handle_input_mutex, NULL);
+
 	pthread_mutex_init(&tb->workspaces_mutex, NULL);
 	pthread_t swayThread;
 	pthread_create(&swayThread, NULL, taskbar_sway_ipc_thread, tb);
@@ -291,20 +306,14 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale) {
-	if (tb == NULL) {
-		return;
-	}
-
-	assert(monitor_index >= 0);
-	assert(monitor_index < TASKBAR_MAX_MONITORS);
-
+// Remember to lock the workspace mutex before calling this function!
+// Returns -1 if no workspace is hovered.
+int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int width, int height, int mouse_x, int mouse_y, int bar_height_at_1x_scale) {
 	float scale = (float)height / (float)bar_height_at_1x_scale;
 	int workspaceX = 0;
 	int workspaceXStep = 30 * scale;
 	int workspaceIndexHovered = -1;
 
-	pthread_mutex_lock(&tb->workspaces_mutex);
 	// Find the hovered workspace
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
@@ -322,7 +331,7 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 			.h = height,
 		};
 
-		if (swr_is_point_in_rect(hitbox, e.mouse_x, e.mouse_y)) {
+		if (swr_is_point_in_rect(hitbox, mouse_x, mouse_y)) {
 			workspaceIndexHovered = i;
 			break;
 		}
@@ -330,12 +339,31 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 		workspaceX += workspaceXStep;
 	}
 
-	tb->hovered_workspace_index = workspaceIndexHovered;
+	return workspaceIndexHovered;
+}
 
-	if (e.type == TB_MouseLeave) {
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale) {
+	if (tb == NULL) {
+		return;
+	}
+
+	assert(monitor_index >= 0);
+	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	e.monitor_index = monitor_index;
+	tb->last_event = e;
+
+	pthread_mutex_lock(&tb->workspaces_mutex);
+
+	tb->hovered_workspace_index = taskbar_get_hovered_workspace(tb, monitor_name, width, height, e.mouse_x, e.mouse_y, bar_height_at_1x_scale);
+
+	if (e.type == TB_MouseEnter) {
+		tb->is_mouse_inside = 1;
+	} else if (e.type == TB_MouseLeave) {
+		tb->is_mouse_inside = 0;
 		tb->hovered_workspace_index = -1;
 	} else if (e.type == TB_MouseMoved) {
-		if (workspaceIndexHovered == -1) {
+		if (tb->hovered_workspace_index == -1) {
 			goto done;
 		}
 	} else if (e.type == TB_ScrollVertical) {
@@ -372,11 +400,11 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 		}
 
 	} else if (e.type == TB_Mouse1Pressed) {
-		if (workspaceIndexHovered == -1) {
+		if (tb->hovered_workspace_index == -1) {
 			goto done;
 		}
 
-		swayipc_switch_workspace(&tb->ipc, workspaceIndexHovered+1);
+		swayipc_switch_workspace(&tb->ipc, tb->hovered_workspace_index+1);
 	}
 
 done:
@@ -390,6 +418,15 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	assert(monitor_index >= 0);
 	assert(monitor_index < TASKBAR_MAX_MONITORS);
+
+	if (monitor_index == tb->last_event.monitor_index) {
+		pthread_mutex_lock(&tb->need_handle_input_mutex);
+		if (tb->is_mouse_inside && tb->need_handle_input) {
+			tb->need_handle_input = 0;
+			taskbar_handle_input_event(tb, monitor_index, monitor_name, tb->last_event, width, height, bar_height_at_1x_scale);
+		}
+		pthread_mutex_unlock(&tb->need_handle_input_mutex);
+	}
 
 	struct timespec startTime;
 	if (tb->debug) {
