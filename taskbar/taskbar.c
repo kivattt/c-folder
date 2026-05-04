@@ -544,7 +544,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
 		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
-		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgba(0,0,0,100), xPos+1, yPos+1); // DROPSHADOW
+		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgba(0,0,0,50), xPos+1, yPos+1); // DROPSHADOW
 		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
 
 		workspaceX += workspaceXStep;
