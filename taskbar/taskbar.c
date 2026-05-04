@@ -311,7 +311,11 @@ void taskbar_deinitialize(struct Taskbar *tb) {
 int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int width, int height, int mouse_x, int mouse_y, int bar_height_at_1x_scale) {
 	float scale = (float)height / (float)bar_height_at_1x_scale;
 	int workspaceX = 0;
-	int workspaceXStep = 30 * scale;
+	int workspaceSize = 23 * scale;
+	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	int highlightHeight = MAX(1.0, floor(2*background_scale));
+	int workspaceXInitial = ceil((((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0);
+	int workspaceXStep = workspaceSize + 2 * workspaceXInitial;
 	int workspaceIndexHovered = -1;
 
 	// Find the hovered workspace
@@ -484,9 +488,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
 	char s[3]; // Enough for "10\0"
-	int workspaceXStep = 30 * scale;
 	int workspaceSize = 23 * scale;
 	int workspaceX = ceil((((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0);
+	int workspaceXStep = workspaceSize + 2 * workspaceX;
 	int workspaceXInitial = workspaceX;
 	for (int i = 0; i < 10; i++) {
 		if (tb->workspaces[i].exists == 0) {
