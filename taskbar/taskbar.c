@@ -14,6 +14,7 @@
 
 #define BACKGROUND_COLOR swr_rgb(42, 44, 46)
 #define TEXT_COLOR swr_rgb(220, 220, 220)
+#define TEXT_DROPSHADOW_COLOR swr_rgba(0,0,0,50)
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -181,8 +182,8 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 
 			if (taskbar_json_eq(key, "change")) {
 				assert(len <= 6);
-				memcpy(change, val.start, len);
 				change[len] = 0;
+				memcpy(change, val.start, len);
 			} else if (taskbar_json_eq(key, "old")) {
 				if (val.start[0] == 'n') { // "null"
 					continue;
@@ -254,6 +255,159 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 	return NULL;
 }
 
+// Finds the currently running swaybg process and outputs its
+// command-line arguments in the struct output `outputs`.
+// It frees the previous strings and allocates the necessary new strings.
+void get_swaybg_cmdline_args(struct TaskbarSwayBGCmdline *outputs) {
+	DIR *dir;
+	struct dirent *entry;
+	char child[NAME_MAX];
+	memcpy(child, "/proc/", 6);
+
+	size_t fileBufSize = 4096;
+	char *fileBuf = malloc(fileBufSize);
+
+	for (int i = 0; i < TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS; i++) {
+		free(outputs[i].output);
+		free(outputs[i].image_path);
+		free(outputs[i].scaling_mode);
+	}
+	memset(outputs, 0, TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS * sizeof(struct TaskbarSwayBGCmdline));
+
+	if (!(dir = opendir("/proc"))) {
+		return;
+	}
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_type == DT_DIR) {
+			// Skip hidden files, "." and ".."
+			if (entry->d_name[0] == '.') {
+				continue;
+			}
+
+			// child = format("/proc/%s/cmdline", entry->d_name)
+			size_t len = strlen(entry->d_name);
+			assert(len < 128); // Sanity check
+			memcpy(child+6, entry->d_name, len);
+			memcpy(child+6+len, "/cmdline", 8);
+			child[len+6+8] = 0;
+
+			int fd = open(child, O_RDONLY);
+			if (fd == -1) {
+				continue;
+			}
+
+			int count = read(fd, fileBuf, 8);
+			if (count == 8 && memcmp(fileBuf, "swaybg\x00", 7) == 0) {
+				count += read(fd, fileBuf+8, fileBufSize-8);
+				close(fd);
+
+				printf("Found swaybg process cmdline (%i bytes):\n\t", count);
+				fflush(stdout);
+				for (int i = 0; i < count; i++) {
+					if (fileBuf[i] == 0) {
+						write(1, " ", 1);
+					} else {
+						write(1, &fileBuf[i], 1);
+					}
+				}
+				printf("\n");
+
+				// Iterate over the command-line arguments
+				int outputIndex = -1;
+				enum TaskbarSwayBGCmdlineParseState parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG;
+				char *currentArg = fileBuf;
+				while (1) {
+					if (currentArg >= fileBuf+count || strlen(currentArg) == 0) {
+						break;
+					}
+
+					int len = strlen(currentArg);
+
+					int isOutput = 0;
+					int isImage = 0;
+					int isMode = 0;
+					struct TaskbarSwayBGCmdline *o = NULL;
+
+					switch (parserState) {
+						case TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG:
+							isOutput |= len == 2 && memcmp(currentArg, "-o", 2) == 0;
+							isOutput |= len == 8 && memcmp(currentArg, "--output", 8) == 0;
+
+							if (isOutput) {
+								outputIndex += 1;
+								assert(outputIndex < TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS);
+								parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_OUTPUT;
+								break;
+							}
+
+							isImage |= len == 2 && memcmp(currentArg, "-i", 2) == 0;
+							isImage |= len == 7 && memcmp(currentArg, "--image", 7) == 0;
+							if (isImage) {
+								parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_IMAGE;
+								break;
+							}
+
+							isMode |= len == 2 && memcmp(currentArg, "-m", 2) == 0;
+							isMode |= len == 6 && memcmp(currentArg, "--mode", 6) == 0;
+							if (isMode) {
+								parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_MODE;
+								break;
+							}
+
+							break;
+						case TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_OUTPUT:
+							assert(outputIndex >= 0);
+							o = &outputs[outputIndex];
+
+							o->output = malloc(len+1);
+							o->output[len] = 0;
+							memcpy(o->output, currentArg, len);
+							parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG;
+							break;
+						case TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_IMAGE:
+							assert(outputIndex >= 0);
+							o = &outputs[outputIndex];
+
+							o->image_path = malloc(len+1);
+							o->image_path[len] = 0;
+							memcpy(o->image_path, currentArg, len);
+							parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG;
+							break;
+						case TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_MODE:
+							assert(outputIndex >= 0);
+							o = &outputs[outputIndex];
+
+							o->scaling_mode = malloc(len+1);
+							o->scaling_mode[len] = 0;
+							memcpy(o->scaling_mode, currentArg, len);
+							parserState = TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG;
+							break;
+					}
+
+					currentArg += strlen(currentArg) + 1;
+				}
+
+				break;
+			}
+
+			close(fd);
+		}
+	}
+
+	// Print the parsed arguments
+	printf("\n");
+	for (int i = 0; i < TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS; i++) {
+		if (outputs[i].output == NULL) {
+			break;
+		}
+
+		printf("Background (%s) for %s: %s\n", outputs[i].scaling_mode, outputs[i].output, outputs[i].image_path);
+	}
+
+	free(fileBuf);
+}
+
 // Returns 0 on success, non-zero on error.
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	if (tb == NULL) {
@@ -283,6 +437,10 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	pthread_mutex_init(&tb->workspaces_mutex, NULL);
 	pthread_t swayThread;
 	pthread_create(&swayThread, NULL, taskbar_sway_ipc_thread, tb);
+
+	/* Note down the command-line args of the currently running swaybg process */
+	memset(tb->swaybg_cmdline, 0, TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS * sizeof(struct TaskbarSwayBGCmdline));
+	get_swaybg_cmdline_args(tb->swaybg_cmdline);
 
 	return 0;
 }
@@ -468,11 +626,13 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	// Draw background with its own scale
 	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
-	swr_draw_fill_background(&tb->swr, 0, 0, 0);
+	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
+	//swr_draw_fill_background(&tb->swr, 0);
+	//swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
 
 	// Draw upper highlight rectangle
 	int highlightHeight = MAX(1.0, floor(2*background_scale));
-	int highlightAlpha = 50;
+	int highlightAlpha = 60;
 	struct Rect rect = {
 		.x = 0,
 		.y = 0,
@@ -482,7 +642,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
 
 	// Draw clock on the right
-	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, swr_rgb(0,0,0), width - 97 * scale, 6 * scale);
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
 	// Draw workspaces on the left
@@ -513,20 +673,14 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		// Draw focus outline when workspace is focused
 		if (tb->workspaces[i].focused) {
-			float radius = 4.0 * scale;
-			float grow = (scale - 1.0) / 2.0;
-			// We want to grow inner and outer by an integer amount to avoid blurry output
-			float growInner = (int)(grow+0.5);
-			float growOuter = 1.0 + (int)grow;
-			if (scale < 1.0) {
-				growInner = 0.0;
-				growOuter = 0.0;
-			}
+			struct Rect r = {
+				.x = workspaceX - workspaceXInitial,
+				.y = highlightHeight,
+				.w = workspaceXStep,
+				.h = height - highlightHeight,
+			};
 
-			// Inner
-			swr_draw_rectangle_rounded(&tb->swr, rect, 0x3063eb72, radius);
-			// Outline
-			swr_draw_rectangle_rounded_outline(&tb->swr, rect, 0xFF63eb72, radius, growInner, growOuter);
+			swr_draw_rectangle(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha));
 		}
 
 		// Draw hovered rectangle when workspace is hovered
@@ -540,11 +694,15 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			swr_draw_rectangle(&tb->swr, hoveredRect, swr_rgba(255,255,255,highlightAlpha));
 		}
 
+		if (tb->workspaces[i].urgent) {
+			textColor = swr_rgb(255, 0, 0);
+		}
+
 		// Draw workspace number
 		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
 		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
-		swr_draw_text_ex(&tb->swr, s, &m->font, swr_rgba(0,0,0,50), xPos+1, yPos+1); // DROPSHADOW
+		swr_draw_text_ex(&tb->swr, s, &m->font, TEXT_DROPSHADOW_COLOR, xPos+1, yPos+1); // DROPSHADOW
 		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
 
 		workspaceX += workspaceXStep;
@@ -562,6 +720,17 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgb(255,255,255), 0, 0);
 		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, 6*scale);
 	}
+
+	/*for (int i = 0; i < width * height; i++) {
+		uint32_t col = tb->swr.dest[i];
+		uint8_t a = 100;
+		uint8_t div = 255 / MAX(1e-6, a);
+		uint8_t r = ((col >> 16) & 0xff) / div;
+		uint8_t g = ((col >>  8) & 0xff) / div;
+		uint8_t b = ((col >>  0) & 0xff) / div;
+		tb->swr.dest[i] = swr_rgba(r, g, b, a);
+		//tb->swr.dest[i] = (tb->swr.dest[i] & 0x00FFFFFF) | 0x00000000;
+	}*/
 
 	m->last_scale = scale;
 }

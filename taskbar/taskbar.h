@@ -2,15 +2,20 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/time.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
+
 #include "../sw-render/sw-render.h"
 #include "../swayipc/swayipc.h"
 #include "sj.h"
 
-// Max amount of taskbars (screens)
-#define TASKBAR_MAX_MONITORS 64
+// Max amount of taskbars (screens, workspaces).
+#define TASKBAR_MAX_MONITORS 10
+#define TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS 20
 
 enum TaskbarEventType {
 	TB_None = 0,
@@ -27,6 +32,13 @@ enum TaskbarEventType {
 	TB_MouseLeave = 8,
 };
 
+enum TaskbarSwayBGCmdlineParseState {
+	TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_FLAG = 0,
+	TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_OUTPUT = 1,
+	TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_IMAGE = 2,
+	TASKBAR_SWAYBG_CMDLINE_PARSE_STATE_MODE = 3,
+};
+
 struct TaskbarEvent {
 	enum TaskbarEventType type;
 	int monitor_index;
@@ -39,7 +51,6 @@ struct TaskbarEvent {
 struct TaskbarPerMonitorData {
 	int is_initialized;
 	unsigned long long frame_number;
-	char *monitor_name; // FIXME: Use this
 
 	float last_scale;
 	struct FontBMPFont font;
@@ -56,6 +67,13 @@ struct TaskbarWorkspace {
 	int focused;
 	int visible; // ?
 	char *output; // Monitor name (allocated in read_workspace_json)
+};
+
+// Command-line arguments passed to currently running swaybg process
+struct TaskbarSwayBGCmdline {
+	char *output; // Monitor name (-o, --output)
+	char *image_path; // Background image file path (-i, --image)
+	char *scaling_mode; // Scale mode (-m, --mode)
 };
 
 struct Taskbar {
@@ -83,6 +101,7 @@ struct Taskbar {
 
 	// Per-monitor data
 	struct TaskbarPerMonitorData per_monitor_data[TASKBAR_MAX_MONITORS];
+	struct TaskbarSwayBGCmdline swaybg_cmdline[TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS];
 };
 
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
