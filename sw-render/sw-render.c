@@ -133,10 +133,7 @@ void swr_convert_image_argb_to_abgr(uint32_t *img, int length) {
 	return swr_convert_image_abgr_to_argb(img, length);
 }
 
-void swr_draw_fill_background(struct SWRender *swr, uint8_t red, uint8_t green, uint8_t blue) {
-	// A background with transparency behaves strangely, so force it to be fully opaque (255).
-	uint32_t color = swr_rgba(red, green, blue, 255);
-
+void swr_draw_fill_background(struct SWRender *swr, uint32_t color) {
 	for (int y = 0; y < swr->height; y++) {
 		for (int x = 0; x < swr->width; x++) {
 			int index = y * swr->width + x;

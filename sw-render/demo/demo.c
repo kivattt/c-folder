@@ -24,7 +24,7 @@ int main() {
 		}
 
 		// Clear the frame buffer
-		memset(image, 0, image_size);
+		swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
 
 		// Draw text using the default font to the frame buffer
 		swr_draw_text(&r, "Hello world, from default font!", 22, swr_rgb(255, 255, 255), 75, 57);
