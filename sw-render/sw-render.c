@@ -463,3 +463,72 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 		}
 	}
 }
+
+void swr_blur_image(uint32_t *img, int width, int height) {
+	uint32_t *buf = malloc(4 * width * height);
+
+	//int kernelSize = 21; // 21 x 21 kernel
+	int kernelSize = 9; // 21 x 21 kernel
+	assert(kernelSize % 2 == 1); // The kernel size should be odd
+
+	float sumDivisor = 0.0;
+	
+	for (int dy = (1-kernelSize) / 2; dy <= (kernelSize-1) / 2; dy++) {
+		for (int dx = (1-kernelSize) / 2; dx <= (kernelSize-1) / 2; dx++) {
+			float dyNorm = (float)dy / (((float)(kernelSize - 1)) / 2.0);
+			float dxNorm = (float)dx / (((float)(kernelSize - 1)) / 2.0);
+			float weight = pow(M_E, -6 * (dxNorm*dxNorm + dyNorm*dyNorm));
+			sumDivisor += weight;
+		}
+	}
+	printf("sumDivisor: %f\n", sumDivisor);
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			float rSum = 0.0;
+			float gSum = 0.0;
+			float bSum = 0.0;
+
+			// Kernel (-10 to 10 inclusive)
+			for (int dy = (1-kernelSize) / 2; dy <= (kernelSize-1) / 2; dy++) {
+				for (int dx = (1-kernelSize) / 2; dx <= (kernelSize-1) / 2; dx++) {
+					int sampleX = MIN(MAX(0, x + dx), width-1);
+					int sampleY = MIN(MAX(0, y + dy), height-1);
+
+					int sampleIndex = sampleY * width + sampleX;
+					uint32_t sample = img[sampleIndex];
+					float rSample = ((sample >> 16) & 0xff) / 255.0;
+					float gSample = ((sample >> 8) & 0xff) / 255.0;
+					float bSample = ((sample >> 0) & 0xff) / 255.0;
+
+					// Gamma normalization (?)
+					/*rSample *= rSample;
+					gSample *= gSample;
+					bSample *= bSample;*/
+
+					float dyNorm = (float)dy / (((float)(kernelSize - 1)) / 2.0);
+					float dxNorm = (float)dx / (((float)(kernelSize - 1)) / 2.0);
+					float weight = pow(M_E, -6 * (dxNorm*dxNorm + dyNorm*dyNorm));
+
+					rSum += rSample * weight;
+					gSum += gSample * weight;
+					bSum += bSample * weight;
+				}
+			}
+
+			rSum /= sumDivisor;
+			gSum /= sumDivisor;
+			bSum /= sumDivisor;
+
+			int outIndex = y * width + x;
+			uint8_t r = rSum * 255.0;
+			uint8_t g = gSum * 255.0;
+			uint8_t b = bSum * 255.0;
+			uint32_t color = 0xFF000000 | r << 16 | g << 8 | b;
+			buf[outIndex] = color;
+		}
+	}
+
+	memcpy(img, buf, 4 * width * height);
+	free(buf);
+}

@@ -51,9 +51,10 @@ void swr_draw_rectangle(struct SWRender *swr, struct Rect rect, uint32_t color);
 void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t color, float radius);
 void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
-// Image channel format conversion
+// Image conversion
 void swr_convert_image_argb_to_abgr(uint32_t *img, int length); // These two are the same.
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length); // These two are the same.
+void swr_blur_image(uint32_t *img, int width, int height); // Blur in-place. (Allocates temporary equal-sized buffer!)
 
 // Internal functions
 void swr_crash_if_dest_is_null(struct SWRender *swr);
