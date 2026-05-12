@@ -464,71 +464,123 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 	}
 }
 
+inline float swr_srgb_to_linear(float val) {
+	return pow(val, 2.2);
+}
+
+inline float swr_linear_to_srgb(float val) {
+	return pow(val, 1.0 / 2.2);
+}
+
+// Sets alpha channel to 0xFF
+void swr_convert_image_srgb_to_linear(uint32_t *img, int length) {
+	for (int i = 0; i < length; i++) {
+		float rCor = 255.0 * swr_srgb_to_linear(((img[i] >> 16) & 0xff) / 255.0);
+		float gCor = 255.0 * swr_srgb_to_linear(((img[i] >>  8) & 0xff) / 255.0);
+		float bCor = 255.0 * swr_srgb_to_linear(((img[i] >>  0) & 0xff) / 255.0);
+
+		uint8_t r = (uint8_t)rCor;
+		uint8_t g = (uint8_t)gCor;
+		uint8_t b = (uint8_t)bCor;
+		img[i] = 0xFF000000 | r << 16 | g << 8 | b;
+	}
+}
+
+// Sets alpha channel to 0xFF
+void swr_convert_image_linear_to_srgb(uint32_t *img, int length) {
+	for (int i = 0; i < length; i++) {
+		float rCor = 255.0 * swr_linear_to_srgb(((img[i] >> 16) & 0xff) / 255.0);
+		float gCor = 255.0 * swr_linear_to_srgb(((img[i] >>  8) & 0xff) / 255.0);
+		float bCor = 255.0 * swr_linear_to_srgb(((img[i] >>  0) & 0xff) / 255.0);
+
+		uint8_t r = (uint8_t)rCor;
+		uint8_t g = (uint8_t)gCor;
+		uint8_t b = (uint8_t)bCor;
+		img[i] = 0xFF000000 | r << 16 | g << 8 | b;
+	}
+}
+
 void swr_blur_image(uint32_t *img, int width, int height) {
 	uint32_t *buf = malloc(4 * width * height);
 
-	//int kernelSize = 21; // 21 x 21 kernel
-	int kernelSize = 9; // 21 x 21 kernel
+	const int kernelSize = 101;
 	assert(kernelSize % 2 == 1); // The kernel size should be odd
 
+	float weights[512];
 	float sumDivisor = 0.0;
-	
-	for (int dy = (1-kernelSize) / 2; dy <= (kernelSize-1) / 2; dy++) {
-		for (int dx = (1-kernelSize) / 2; dx <= (kernelSize-1) / 2; dx++) {
-			float dyNorm = (float)dy / (((float)(kernelSize - 1)) / 2.0);
-			float dxNorm = (float)dx / (((float)(kernelSize - 1)) / 2.0);
-			float weight = pow(M_E, -6 * (dxNorm*dxNorm + dyNorm*dyNorm));
-			sumDivisor += weight;
-		}
+	for (int dx = 0; dx < kernelSize; dx++) {
+		float dxNorm = (2.0 * (float)dx / (float)(kernelSize-1)) - 1.0;
+		float weight = pow(M_E, -6 * (dxNorm*dxNorm));
+		weights[dx] = weight;
+		sumDivisor += weight;
 	}
-	printf("sumDivisor: %f\n", sumDivisor);
 
+	swr_convert_image_srgb_to_linear(img, width*height);
+
+	// Horizontal blur
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float rSum = 0.0;
 			float gSum = 0.0;
 			float bSum = 0.0;
+			for (int dx = 0; dx < kernelSize; dx++) {
+				int xCentered = x + (dx - ceil((float)kernelSize/2.0));
+				int sampleX = MIN(width-1, MAX(0, xCentered));
+				int sampleIndex = y * width + sampleX;
 
-			// Kernel (-10 to 10 inclusive)
-			for (int dy = (1-kernelSize) / 2; dy <= (kernelSize-1) / 2; dy++) {
-				for (int dx = (1-kernelSize) / 2; dx <= (kernelSize-1) / 2; dx++) {
-					int sampleX = MIN(MAX(0, x + dx), width-1);
-					int sampleY = MIN(MAX(0, y + dy), height-1);
-
-					int sampleIndex = sampleY * width + sampleX;
-					uint32_t sample = img[sampleIndex];
-					float rSample = ((sample >> 16) & 0xff) / 255.0;
-					float gSample = ((sample >> 8) & 0xff) / 255.0;
-					float bSample = ((sample >> 0) & 0xff) / 255.0;
-
-					// Gamma normalization (?)
-					/*rSample *= rSample;
-					gSample *= gSample;
-					bSample *= bSample;*/
-
-					float dyNorm = (float)dy / (((float)(kernelSize - 1)) / 2.0);
-					float dxNorm = (float)dx / (((float)(kernelSize - 1)) / 2.0);
-					float weight = pow(M_E, -6 * (dxNorm*dxNorm + dyNorm*dyNorm));
-
-					rSum += rSample * weight;
-					gSum += gSample * weight;
-					bSum += bSample * weight;
-				}
+				float weight = weights[dx];
+				uint32_t color = img[sampleIndex];
+				rSum += weight * (float)((color>>16) & 0xff);
+				gSum += weight * (float)((color>>8) & 0xff);
+				bSum += weight * (float)((color>>0) & 0xff);
 			}
 
 			rSum /= sumDivisor;
 			gSum /= sumDivisor;
 			bSum /= sumDivisor;
 
+			uint8_t r = (uint8_t)rSum;
+			uint8_t g = (uint8_t)gSum;
+			uint8_t b = (uint8_t)bSum;
+			uint32_t col = swr_rgb(r, g, b);
+
 			int outIndex = y * width + x;
-			uint8_t r = rSum * 255.0;
-			uint8_t g = gSum * 255.0;
-			uint8_t b = bSum * 255.0;
-			uint32_t color = 0xFF000000 | r << 16 | g << 8 | b;
-			buf[outIndex] = color;
+			buf[outIndex] = col;
 		}
 	}
 
-	memcpy(img, buf, 4 * width * height);
+	// Vertical blur
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			float rSum = 0.0;
+			float gSum = 0.0;
+			float bSum = 0.0;
+			for (int dy = 0; dy < kernelSize; dy++) {
+				int yCentered = y + (dy - ceil((float)kernelSize/2.0));
+				int sampleY = MIN(height-1, MAX(0, yCentered));
+				int sampleIndex = sampleY * width + x;
+
+				float weight = weights[dy];
+				uint32_t color = buf[sampleIndex];
+				rSum += weight * (float)((color>>16) & 0xff);
+				gSum += weight * (float)((color>>8) & 0xff);
+				bSum += weight * (float)((color>>0) & 0xff);
+			}
+
+			rSum /= sumDivisor;
+			gSum /= sumDivisor;
+			bSum /= sumDivisor;
+
+			uint8_t r = (uint8_t)rSum;
+			uint8_t g = (uint8_t)gSum;
+			uint8_t b = (uint8_t)bSum;
+			uint32_t col = swr_rgb(r, g, b);
+
+			int outIndex = y * width + x;
+			img[outIndex] = col;
+		}
+	}
+
+	swr_convert_image_linear_to_srgb(img, width*height);
 	free(buf);
 }
