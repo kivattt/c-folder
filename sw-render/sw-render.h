@@ -54,8 +54,6 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 // Image conversion
 void swr_convert_image_argb_to_abgr(uint32_t *img, int length); // These two are the same.
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length); // These two are the same.
-void swr_convert_image_srgb_to_linear(uint32_t *img, int length); // Sets alpha channel to 0xFF
-void swr_convert_image_linear_to_srgb(uint32_t *img, int length); // Sets alpha channel to 0xFF
 void swr_blur_image(uint32_t *img, int width, int height); // Blur in-place. (Allocates temporary equal-sized buffer!)
 
 // Internal functions
