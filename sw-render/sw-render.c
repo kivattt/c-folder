@@ -464,11 +464,11 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 	}
 }
 
-inline float swr_srgb_to_linear(float val) {
+float swr_srgb_to_linear(float val) {
 	return pow(val, 2.2);
 }
 
-inline float swr_linear_to_srgb(float val) {
+float swr_linear_to_srgb(float val) {
 	return pow(val, 1.0 / 2.2);
 }
 
@@ -506,6 +506,10 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 		sumDivisor += weight;
 	}
 
+	for (int dx = 0; dx < kernelSize; dx++) {
+		weights[dx] /= sumDivisor;
+	}
+
 	// Blur horizontally
 	for (int y = 0; y < height; y++) {
 		// Load the line buffer
@@ -527,10 +531,6 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 				gSum += weight * line_buf[sampleIndex+1];
 				bSum += weight * line_buf[sampleIndex+2];
 			}
-
-			rSum /= sumDivisor;
-			gSum /= sumDivisor;
-			bSum /= sumDivisor;
 
 			int index = 3 * (y * width + x);
 			img_f32[index+0] = rSum;
@@ -564,10 +564,6 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 				gSum += weight * line_buf[sampleIndex+1];
 				bSum += weight * line_buf[sampleIndex+2];
 			}
-
-			rSum /= sumDivisor;
-			gSum /= sumDivisor;
-			bSum /= sumDivisor;
 
 			int index = 3 * (y * width + x);
 			img_f32[index+0] = rSum;
