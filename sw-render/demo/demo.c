@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <raylib.h>
+#include <time.h>
 
 #include "../sw-render.h"
 
@@ -24,7 +25,12 @@ int main() {
 		}
 
 		// Clear the frame buffer
+		struct timespec start, end;
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
+		clock_gettime(CLOCK_MONOTONIC, &end);
+		uint64_t diff = (uint64_t)(end.tv_sec - start.tv_sec) * 1000000000LL + (end.tv_nsec - start.tv_nsec);
+		printf("Nanos: %lu\n", diff);
 
 		// Draw text using the default font to the frame buffer
 		swr_draw_text(&r, "Hello world, from default font!", 22, swr_rgb(255, 255, 255), 75, 57);
