@@ -617,6 +617,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		taskbar_date_human_string(tb->date_human);
 		taskbar_date_numbers_string(tb->date_numbers);
+
+		float percent = 100.0 * taskbar_get_battery_percentage();
+		snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
 	}
 
 	// Set the font size if scale changed
@@ -650,10 +653,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
+	// Draw battery percentage
+	swr_draw_text_ex(&tb->swr, tb->battery_percentage, &m->font, TEXT_COLOR, width - 200 * scale, 6*scale+1);
 	// Draw date (human)
-	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font, TEXT_COLOR, width - 300 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font, TEXT_COLOR, width - 400 * scale, 6*scale+1);
 	// Draw date (numbers)
-	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 500 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 600 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -768,4 +773,26 @@ void taskbar_date_numbers_string(char *s) {
 	time_t now = time(NULL);
 	struct tm *t = localtime(&now);
 	strftime(s, 20, "%Y-%m-%d", t);
+}
+
+// Returns a value 0.0 to 1.0 telling you how full the battery is
+float taskbar_get_battery_percentage() {
+	char buf[64];
+	int fd = open("/sys/class/power_supply/BAT0/charge_now", O_RDONLY);
+	struct stat fi;
+	if (fstat(fd, &fi) != -1) {
+		memset(buf, 0, sizeof(buf));
+		read(fd, buf, sizeof(buf));
+		close(fd);
+		uint64_t chargeNow = strtoull(buf, NULL, 10);
+
+		fd = open("/sys/class/power_supply/BAT0/charge_full", O_RDONLY);
+		memset(buf, 0, sizeof(buf));
+		read(fd, buf, sizeof(buf));
+		close(fd);
+		uint64_t chargeFull = strtoull(buf, NULL, 10);
+		return (float)chargeNow / (float)chargeFull;
+	};
+
+	return -1.0; // Error
 }

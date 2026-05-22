@@ -89,6 +89,7 @@ struct Taskbar {
 	char clock[8+1]; // Enough for "01:23:45" (including the null byte)
 	char date_human[20]; // Enough for "Fri May 22" (including the null byte)
 	char date_numbers[20]; // Enough for "2026-05-22" (including the null byte)
+	char battery_percentage[20]; // Enough for "100.0%" (including the null byte)
 	char *filename_lekton_font;
 	char *filename_background;
 	int hovered_workspace_index;
@@ -123,3 +124,4 @@ int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r
 int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int width, int height, int mouse_x, int mouse_y, int bar_height_at_1x_scale);
 void taskbar_date_human_string(char *s);
 void taskbar_date_numbers_string(char *s);
+float taskbar_get_battery_percentage();
