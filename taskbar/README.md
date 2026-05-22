@@ -11,3 +11,11 @@ It is a modified version of [Lekton](https://fonts.google.com/specimen/Lekton) w
 
 - The highest point of the `0` (zero) symbol was moved down by 1 (1/1000 EM unit)
 - The lowest two points of the `9` (nine) symbol were moved up by 8 (8/1000 EM unit)
+
+## TODO
+- Fix scrolling on my laptop touchpad (its way too fast and should work like swaybar)
+- Blur background
+- RAM usage
+- Make date a pretty 2-line thing
+- Dynamic battery icon?
+- Choose a different font for text (probably Inter)
