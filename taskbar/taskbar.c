@@ -426,9 +426,9 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	swr_initialize(&tb->swr);
 
-	int channels;
+	/*int channels;
 	tb->background_bitmap = stbi_load(tb->filename_background, &tb->background_width, &tb->background_height, &channels, 4);
-	swr_convert_image_abgr_to_argb((uint32_t*)tb->background_bitmap, tb->background_width * tb->background_height);
+	swr_convert_image_abgr_to_argb((uint32_t*)tb->background_bitmap, tb->background_width * tb->background_height);*/
 
 	memset(tb->per_monitor_data, 0, TASKBAR_MAX_MONITORS * sizeof(struct TaskbarPerMonitorData));
 
@@ -446,7 +446,7 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 }
 
 void taskbar_deinitialize(struct Taskbar *tb) {
-	stbi_image_free(tb->background_bitmap);
+	//stbi_image_free(tb->background_bitmap);
 
 	free(tb->filename_lekton_font);
 	free(tb->filename_background);
@@ -470,7 +470,8 @@ int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int wi
 	float scale = (float)height / (float)bar_height_at_1x_scale;
 	int workspaceX = 0;
 	int workspaceSize = 23 * scale;
-	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	//float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	float background_scale = 1.0;
 	int highlightHeight = MAX(1.0, floor(2*background_scale));
 	int workspaceXInitial = ceil((((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0);
 	int workspaceXStep = workspaceSize + 2 * workspaceXInitial;
@@ -624,15 +625,16 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_set_output(&tb->swr, framebuffer, width, height);
 
 	// Draw background with its own scale
-	float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	//float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
+	float background_scale = 1.0;
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
-	swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
+	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
 	//swr_draw_fill_background(&tb->swr, 0);
-	//swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
+	swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
 
 	// Draw upper highlight rectangle
 	int highlightHeight = MAX(1.0, floor(2*background_scale));
-	int highlightAlpha = 60;
+	int highlightAlpha = 80;
 	struct Rect rect = {
 		.x = 0,
 		.y = 0,

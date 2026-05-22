@@ -15,7 +15,7 @@
 
 // Max amount of taskbars (screens, workspaces).
 #define TASKBAR_MAX_MONITORS 10
-#define TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS 20
+#define TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS 32
 
 enum TaskbarEventType {
 	TB_None = 0,
@@ -47,10 +47,14 @@ struct TaskbarEvent {
 	double scroll_value;
 };
 
-// Per-monitor data
+// Per-monitor data (assumed to stay at the same index per monitor name..)
 struct TaskbarPerMonitorData {
 	int is_initialized;
 	unsigned long long frame_number;
+
+	unsigned char *background_bitmap;
+	int background_width;
+	int background_height;
 
 	float last_scale;
 	struct FontBMPFont font;
@@ -92,16 +96,13 @@ struct Taskbar {
 	int need_handle_input; // When a workspace changed, the hovered one may have changed even when no new mouse inputs were handled. Forces a TB_MouseMoved event in this case.
 	pthread_mutex_t need_handle_input_mutex;
 
-	unsigned char *background_bitmap;
-	int background_width;
-	int background_height;
-
 	struct TaskbarWorkspace workspaces[10];
 	pthread_mutex_t workspaces_mutex;
 
+	struct TaskbarSwayBGCmdline swaybg_cmdline[TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS];
+
 	// Per-monitor data
 	struct TaskbarPerMonitorData per_monitor_data[TASKBAR_MAX_MONITORS];
-	struct TaskbarSwayBGCmdline swaybg_cmdline[TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS];
 };
 
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);

@@ -134,15 +134,20 @@ void swr_convert_image_argb_to_abgr(uint32_t *img, int length) {
 }
 
 void swr_draw_fill_background(struct SWRender *swr, uint32_t color) {
+	int size = swr->width * swr->height;
+	for (int i = 0; i < size; i++) {
+		swr->dest[i] = color;
+	}
+
 	// 5 - 6 ms
-#define N 4096
+/*#define N 4096
 
 	uint32_t src[N];
 	for (int i = 0; i < N; i++) src[i] = color;
 
 	for (int i = 0; i < swr->width * swr->height; i += N) {
 		memcpy(swr->dest + i, &src, sizeof(uint32_t) * N);
-	}
+	}*/
 
 	// 13 ms
 	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
