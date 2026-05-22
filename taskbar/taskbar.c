@@ -614,6 +614,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			memcpy(tb->clock, clock, 8+1);
 			m->max_render_time_last_5s = 0.0;
 		}
+
+		taskbar_date_human_string(tb->date_human);
+		taskbar_date_numbers_string(tb->date_numbers);
 	}
 
 	// Set the font size if scale changed
@@ -646,6 +649,11 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	// Draw clock on the right
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
+
+	// Draw date (human)
+	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font, TEXT_COLOR, width - 300 * scale, 6*scale+1);
+	// Draw date (numbers)
+	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 500 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -748,4 +756,16 @@ void taskbar_clock_string(char *s) {
 
 	struct tm *today = localtime(&tv.tv_sec);
 	sprintf(s, "%02d:%02d:%02d", today->tm_hour, today->tm_min, today->tm_sec);
+}
+
+void taskbar_date_human_string(char *s) {
+	time_t now = time(NULL);
+	struct tm *t = localtime(&now);
+	strftime(s, 20, "%a %b %d", t);
+}
+
+void taskbar_date_numbers_string(char *s) {
+	time_t now = time(NULL);
+	struct tm *t = localtime(&now);
+	strftime(s, 20, "%Y-%m-%d", t);
 }
