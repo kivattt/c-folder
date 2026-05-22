@@ -96,8 +96,6 @@ bool taskbar_json_eq(sj_Value val, char *s) {
 
 // Returns non-zero on error
 int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r, sj_Value root) {
-	memset(workspace, 0, sizeof(struct TaskbarWorkspace));
-
 	int hasNum = 0;
 
 	sj_Value key, val;
@@ -435,6 +433,10 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	pthread_mutex_init(&tb->need_handle_input_mutex, NULL);
 
 	pthread_mutex_init(&tb->workspaces_mutex, NULL);
+	pthread_mutex_lock(&tb->workspaces_mutex);
+	memset(&tb->workspaces, 0, 10*sizeof(struct TaskbarWorkspace));
+	pthread_mutex_unlock(&tb->workspaces_mutex);
+
 	pthread_t swayThread;
 	pthread_create(&swayThread, NULL, taskbar_sway_ipc_thread, tb);
 
