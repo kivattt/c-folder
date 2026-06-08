@@ -349,6 +349,20 @@ struct Rect swr_draw_text_impl(struct SWRender *swr, const char *text, struct Fo
 	return bounding_box;
 }
 
+void swr_draw_fps(struct SWRender *swr, int size, uint32_t color, int x, int y) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	long long now = ((long long)ts.tv_sec * 1000000000LL) + ts.tv_nsec;
+	long long diff = now - swr->last_draw_fps_call_time_ns;
+	swr->last_draw_fps_call_time_ns = now;
+	float diff_seconds = (float)diff / 1000000000.0;
+
+	float fps = 1.0 / diff_seconds;
+	char fpsText[32];
+	snprintf(fpsText, 32, "%f fps", fps);
+	swr_draw_text(swr, fpsText, size, color, x, y);
+}
+
 float swr_sdf_rect(float x, float y, struct FloatRect rect, float radius) {
 	rect.w -= 1.0;
 	rect.h -= 1.0;

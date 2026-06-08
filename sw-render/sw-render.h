@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 #include <math.h>
 #include <immintrin.h>
 #include <assert.h>
@@ -14,6 +15,8 @@ struct SWRender {
 	uint32_t *dest; // Destination image (8-bit ARGB)
 	int width;      // Destination image width
 	int height;     // Destination image height
+
+	int64_t last_draw_fps_call_time_ns;
 
 	struct FontBMPFont default_font;
 	uint32_t last_default_font_size;
@@ -43,6 +46,7 @@ struct Rect swr_measure_text_ex(struct SWRender *swr, const char *text, struct F
 void swr_draw_fill_background(struct SWRender *swr, uint32_t color);
 struct Rect swr_draw_text(struct SWRender *swr, const char *text, uint32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 struct Rect swr_draw_text_ex(struct SWRender *swr, const char *text, struct FontBMPFont *font_bitmaps, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
+void swr_draw_fps(struct SWRender *swr, int size, uint32_t color, int x, int y);
 
 void swr_draw_image(struct SWRender *swr, uint32_t *img_argb, int width, int height, int x, int y);
 void swr_draw_image_ex(struct SWRender *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
