@@ -32,10 +32,8 @@ static void destroy_renderer(Display *dpy, struct Renderer *r) {
 
     XShmDetach(dpy, &r->shm);
     XDestroyImage(r->image);
-
     shmdt(r->shm.shmaddr);
     shmctl(r->shm.shmid, IPC_RMID, NULL);
-
     memset(r, 0, sizeof(*r));
 }
 
@@ -59,7 +57,6 @@ static bool create_renderer(Display *dpy, Visual *visual, int depth, struct Rend
     }
 
     r->shm.shmaddr = shmat(r->shm.shmid, NULL, 0);
-
     if (r->shm.shmaddr == (char *)-1) {
         shmctl(r->shm.shmid, IPC_RMID, NULL);
         XDestroyImage(r->image);
@@ -80,7 +77,6 @@ static bool create_renderer(Display *dpy, Visual *visual, int depth, struct Rend
 
     /*
         Mark for deletion immediately.
-
         Segment stays alive until detached.
     */
     shmctl(r->shm.shmid, IPC_RMID, NULL);
@@ -130,7 +126,6 @@ int main() {
 	swr_initialize(&r);
 
     bool running = true;
-	int frame_num = 0;
 
     while (running) {
         while (XPending(dpy)) {
@@ -155,8 +150,6 @@ int main() {
 		swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
 		swr_draw_text(&r, "hello, world!", 22, swr_rgb(255,255,255), 80, 80);
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
-		printf("frame #%i\n", frame_num);
-		frame_num += 1;
 
         XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
