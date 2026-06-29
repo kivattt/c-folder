@@ -422,7 +422,8 @@ void swr_draw_rectangle_rounded(struct SWRender *swr, struct Rect rect, uint32_t
 			int sample_x = x + x_offset;
 			int sample_y = y + y_offset;
 
-			float alpha = color_alpha * swr_sdf_rect(sample_x, sample_y, float_rect, radius);
+			// Gamma correction with swr_linear_to_srgb
+			float alpha = color_alpha * swr_linear_to_srgb(swr_sdf_rect(sample_x, sample_y, float_rect, radius));
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
 			int dest_index = sample_y * swr->width + sample_x;
@@ -483,7 +484,8 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 			int sample_x = x + x_offset;
 			int sample_y = y + y_offset;
 
-			float alpha = color_alpha * swr_sdf_rect_outline(sample_x, sample_y, float_rect, radius, thickness_inward, thickness_outward);
+			// Gamma correction with swr_linear_to_srgb
+			float alpha = color_alpha * swr_linear_to_srgb(swr_sdf_rect_outline(sample_x, sample_y, float_rect, radius, thickness_inward, thickness_outward));
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
 			int dest_index = sample_y * swr->width + sample_x;
