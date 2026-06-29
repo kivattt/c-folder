@@ -474,7 +474,8 @@ int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int wi
 	int workspaceSize = 23 * scale;
 	//float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
 	float background_scale = 1.0;
-	int highlightHeight = MAX(1.0, floor(2*background_scale));
+	//int highlightHeight = MAX(1.0, floor(2*background_scale));
+	int highlightHeight = 0;
 	int workspaceXInitial = ceil((((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0);
 	int workspaceXStep = workspaceSize + 2 * workspaceXInitial;
 	int workspaceIndexHovered = -1;
@@ -564,7 +565,7 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 			if (prev != -1) swayipc_switch_workspace(&tb->ipc, prev + 1);
 		}
 
-	} else if (e.type == TB_Mouse1Pressed) {
+	} else if (e.type == TB_Mouse1Pressed || e.type == TB_Mouse2Pressed) {
 		if (tb->hovered_workspace_index == -1) {
 			goto done;
 		}
@@ -642,7 +643,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
 
 	// Draw upper highlight rectangle
-	int highlightHeight = MAX(1.0, floor(2*background_scale));
+	//int highlightHeight = MAX(1.0, floor(2*background_scale));
+	int highlightHeight = 0; // DEBUGGING
 	int highlightAlpha = 80;
 	struct Rect rect = {
 		.x = 0,
@@ -691,6 +693,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			.h = workspaceSize,
 		};
 
+		float workspaceRadius = 2.0;
+
 		// Draw focus outline when workspace is focused
 		if (tb->workspaces[i].focused) {
 			struct Rect r = {
@@ -700,7 +704,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 				.h = height - highlightHeight,
 			};
 
-			swr_draw_rectangle(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha));
+			swr_draw_rectangle_rounded(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha), workspaceRadius);
 		}
 
 		// Draw hovered rectangle when workspace is hovered
@@ -711,7 +715,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 				.w = workspaceXStep,
 				.h = height - highlightHeight,
 			};
-			swr_draw_rectangle(&tb->swr, hoveredRect, swr_rgba(255,255,255,highlightAlpha));
+			swr_draw_rectangle_rounded_outline(&tb->swr, hoveredRect, swr_rgba(150,150,150,255), workspaceRadius, 0.0, 0.0);
 		}
 
 		if (tb->workspaces[i].urgent) {
