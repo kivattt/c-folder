@@ -619,6 +619,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		taskbar_date_human_string(tb->date_human);
 		taskbar_date_numbers_string(tb->date_numbers);
+		taskbar_ram_usage_string(tb->ram_usage);
 
 		float percent = 100.0 * taskbar_get_battery_percentage();
 		snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
@@ -649,7 +650,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		.w = width,
 		.h = highlightHeight,
 	};
-	swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
+	//swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
 
 	// Draw clock on the right
 	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
@@ -661,6 +662,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font, TEXT_COLOR, width - 400 * scale, 6*scale+1);
 	// Draw date (numbers)
 	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 600 * scale, 6*scale+1);
+	// Draw RAM usage
+	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font, TEXT_COLOR, width - 900 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -797,4 +800,34 @@ float taskbar_get_battery_percentage() {
 	};
 
 	return -1.0; // Error
+}
+
+// s needs to be atleast 64 bytes
+void taskbar_ram_usage_string(char *s) {
+	FILE *f = fopen("/proc/meminfo", "r");
+	if (f != NULL) {
+		char line[64];
+
+		uint64_t memTotal, memAvailable;
+		// Loop over lines in /proc/meminfo
+		while (fgets(line, sizeof(line), f)) {
+			int len = strlen(line);
+
+			if (len >= 9 && memcmp(line, "MemTotal:", 9) == 0) {
+				char *number;
+				for (number = line+9; *number == ' '; number++) {}
+				memTotal = strtoull(number, NULL, 10);
+			} else if (len >= 13 && memcmp(line, "MemAvailable:", 13) == 0) {
+				char *number;
+				for (number = line+13; *number == ' '; number++) {}
+				memAvailable = strtoull(number, NULL, 10);
+			}
+		}
+
+		fclose(f);
+
+		uint64_t memLeft = (memTotal - memAvailable) * 1000;
+		memTotal *= 1000; // From kB to bytes
+		sprintf(s, "RAM: %.1f GB/%.1f GB", floor(memLeft / 100000000.0) / 10, floor(memTotal / 100000000.0) / 10);
+	}
 }
