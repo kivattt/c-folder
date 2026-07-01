@@ -32,14 +32,22 @@ int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index
 		assert(0);
 	}
 
-	m->font_size = 22 * scale;
+	m->font1_size = 22 * scale;
+	m->font2_size = 20 * scale;
 
-	FT_Error err = fontbmp_generate(&m->font, m->font_name, m->font_size);
-	printf("Font bitmaps regenerated with size %i\n", m->font_size);
-	if (err) {
-		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f)\n", scale, m->last_scale);
-		return err;
+	FT_Error err1 = fontbmp_generate(&m->font1, m->font1_name, m->font1_size);
+	if (err1) {
+		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f, font1_size: %i)\n", scale, m->last_scale, m->font1_size);
+		return err1;
 	}
+
+	FT_Error err2 = fontbmp_generate(&m->font2, m->font2_name, m->font2_size);
+	if (err2) {
+		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f, font2_size: %i)\n", scale, m->last_scale, m->font2_size);
+		return err2;
+	}
+
+	printf("Font bitmaps regenerated with size %i, %i\n", m->font1_size, m->font2_size);
 
 	return 0;
 }
@@ -58,9 +66,14 @@ int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, f
 	}
 
 	m->is_initialized = 1;
-	m->font_name = tb->filename_lekton_font;
 	m->last_scale = scale;
-	m->font = fontbmp_initialize();
+
+	m->font1_name = tb->filename_lekton_font;
+	m->font1 = fontbmp_initialize();
+
+	m->font2_name = tb->filename_lekton_font;
+	m->font2 = fontbmp_initialize();
+
 	if (tb->debug) {
 		m->debug_string = malloc(64);
 	}
@@ -85,7 +98,8 @@ void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index
 	}
 
 	m->is_initialized = 0;
-	fontbmp_deinitialize(m->font);
+	fontbmp_deinitialize(m->font1);
+	fontbmp_deinitialize(m->font2);
 	free(m->debug_string);
 }
 
@@ -657,19 +671,19 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	//swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
 
 	// Draw clock on the right
-	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
-	swr_draw_text_ex(&tb->swr, tb->clock, &m->font, TEXT_COLOR, width - 97 * scale, 6 * scale);
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_COLOR, width - 97 * scale, 6 * scale);
 
 	// Draw battery percentage
-	swr_draw_text_ex(&tb->swr, tb->battery_percentage, &m->font, TEXT_COLOR, width - 200 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->battery_percentage, &m->font2, TEXT_COLOR, width - 200 * scale, 6*scale+1);
 	// Draw date (human)
-	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font, TEXT_COLOR, width - 400 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font2, TEXT_COLOR, width - 400 * scale, 6*scale+1);
 	// Draw date (numbers)
-	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 600 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font2, TEXT_COLOR, width - 600 * scale, 6*scale+1);
 	// Draw RAM usage
-	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font, TEXT_COLOR, width - 900 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font2, TEXT_COLOR, width - 900 * scale, 6*scale+1);
 	// Draw disk space
-	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font2, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -727,11 +741,11 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		}
 
 		// Draw workspace number
-		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font, textColor, 0, 0);
+		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font2, textColor, 0, 0);
 		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
-		swr_draw_text_ex(&tb->swr, s, &m->font, TEXT_DROPSHADOW_COLOR, xPos+1, yPos+1); // DROPSHADOW
-		swr_draw_text_ex(&tb->swr, s, &m->font, textColor, xPos, yPos);
+		swr_draw_text_ex(&tb->swr, s, &m->font2, TEXT_DROPSHADOW_COLOR, xPos+1, yPos+1); // DROPSHADOW
+		swr_draw_text_ex(&tb->swr, s, &m->font2, textColor, xPos, yPos);
 
 		workspaceX += workspaceXStep;
 	}
@@ -745,8 +759,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
 		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
 
-		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgb(255,255,255), 0, 0);
-		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, 6*scale);
+		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgb(255,255,255), 0, 0);
+		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, 6*scale);
 	}
 
 	/*for (int i = 0; i < width * height; i++) {

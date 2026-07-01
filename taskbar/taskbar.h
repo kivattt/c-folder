@@ -58,9 +58,15 @@ struct TaskbarPerMonitorData {
 	int background_height;
 
 	float last_scale;
-	struct FontBMPFont font;
-	char *font_name;
-	int font_size;
+
+	struct FontBMPFont font1; // Main font
+	char *font1_name;
+	int font1_size;
+
+	struct FontBMPFont font2; // Smaller font
+	char *font2_name;
+	int font2_size;
+
 	double max_render_time_last_5s;
 	char *debug_string; // Allocated in taskbar_per_monitor_data_initialize()
 };
