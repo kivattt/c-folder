@@ -610,7 +610,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 	m->frame_number += 1;
 
-	if (m->frame_number % 30 == 0) {
+	// Should really be put into a separate thread...
+	// But for now we just run this update loop on the first monitor frameloop
+	if (monitor_index == 0 && m->frame_number % 120 == 0) {
 		char clock[8+1];
 		taskbar_clock_string(clock);
 		if (clock[7] == '0' || clock[7] == '5') {
@@ -621,6 +623,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		taskbar_date_human_string(tb->date_human);
 		taskbar_date_numbers_string(tb->date_numbers);
 		taskbar_ram_usage_string(tb->ram_usage);
+		taskbar_disk_space_string(tb->disk_space);
 
 		float percent = 100.0 * taskbar_get_battery_percentage();
 		snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
@@ -639,7 +642,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	float background_scale = 1.0;
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
-	//swr_draw_fill_background(&tb->swr, 0);
 	swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
 
 	// Draw upper highlight rectangle
@@ -666,6 +668,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font, TEXT_COLOR, width - 600 * scale, 6*scale+1);
 	// Draw RAM usage
 	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font, TEXT_COLOR, width - 900 * scale, 6*scale+1);
+	// Draw disk space
+	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -693,7 +697,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			.h = workspaceSize,
 		};
 
-		float workspaceRadius = 2.0;
+		float workspaceRadius = 2.0 * scale;
 
 		// Draw focus outline when workspace is focused
 		if (tb->workspaces[i].focused) {
@@ -812,7 +816,7 @@ void taskbar_ram_usage_string(char *s) {
 	if (f != NULL) {
 		char line[64];
 
-		uint64_t memTotal, memAvailable;
+		uint64_t memTotal = 0, memAvailable = 0;
 		// Loop over lines in /proc/meminfo
 		while (fgets(line, sizeof(line), f)) {
 			int len = strlen(line);
@@ -832,6 +836,14 @@ void taskbar_ram_usage_string(char *s) {
 
 		uint64_t memLeft = (memTotal - memAvailable) * 1000;
 		memTotal *= 1000; // From kB to bytes
-		sprintf(s, "RAM: %.1f GB/%.1f GB", floor(memLeft / 100000000.0) / 10, floor(memTotal / 100000000.0) / 10);
+		sprintf(s, "RAM: %.1f GB/%.1f GB", floor(memLeft / 100000000.0) / 10.0, floor(memTotal / 100000000.0) / 10.0);
+	}
+}
+
+// s needs to be atleast ... bytes (TODO)
+void taskbar_disk_space_string(char *s) {
+	struct statfs stat;
+	if (statfs("/", &stat) == 0) {
+		sprintf(s, "root: %.1f GB", floor((stat.f_bavail * stat.f_bsize) / 100000000.0) / 10.0);
 	}
 }

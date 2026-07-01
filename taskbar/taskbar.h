@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <fcntl.h>
 #include <dirent.h>
 
@@ -90,6 +91,7 @@ struct Taskbar {
 	char date_human[20]; // Enough for "Fri May 22" (including the null byte)
 	char date_numbers[20]; // Enough for "2026-05-22" (including the null byte)
 	char ram_usage[64]; // Enough for "RAM: 16.0 GB/16.0 GB"
+	char disk_space[64]; // Enough for "root: 696969.2 GB"
 	char battery_percentage[20]; // Enough for "100.0%" (including the null byte)
 	char *filename_lekton_font;
 	char *filename_background;
@@ -127,3 +129,4 @@ void taskbar_date_human_string(char *s);
 void taskbar_date_numbers_string(char *s);
 float taskbar_get_battery_percentage();
 void taskbar_ram_usage_string(char *s);
+void taskbar_disk_space_string(char *s);
