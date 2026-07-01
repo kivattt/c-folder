@@ -680,10 +680,10 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font2, TEXT_COLOR, width - 400 * scale, 6*scale+1);
 	// Draw date (numbers)
 	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font2, TEXT_COLOR, width - 600 * scale, 6*scale+1);
-	// Draw RAM usage
-	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font2, TEXT_COLOR, width - 900 * scale, 6*scale+1);
 	// Draw disk space
-	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font2, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font2, TEXT_COLOR, width - 800 * scale, 6*scale+1);
+	// Draw RAM usage
+	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font2, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
