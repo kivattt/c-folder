@@ -254,7 +254,7 @@ int swr_draw_glyph(struct SWRender *swr, struct FontBMPGlyphBitmap img, uint32_t
 
 			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
 
-			uint8_t alpha = (float)(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
+			uint8_t alpha = (float)swr_linear_to_srgb(img.bitmap_data[img_index] / 255.0) * (float)(color >> 24);
 			uint32_t img_color = swr_alpha_blend(swr->dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF));
 
 			// Set the pixel
