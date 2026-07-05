@@ -622,8 +622,6 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		taskbar_per_monitor_data_initialize(tb, monitor_index, scale);
 	}
 
-	m->frame_number += 1;
-
 	// Should really be put into a separate thread...
 	// But for now we just run this update loop on the first monitor frameloop
 	if (monitor_index == 0 && m->frame_number % 120 == 0) {
@@ -642,6 +640,8 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		float percent = 100.0 * taskbar_get_battery_percentage();
 		snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
 	}
+
+	m->frame_number += 1;
 
 	// Set the font size if scale changed
 	if (scale != m->last_scale) {
@@ -669,21 +669,23 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		.h = highlightHeight,
 	};
 	//swr_draw_rectangle(&tb->swr, rect, swr_rgba(255,255,255,highlightAlpha));
+	int font1Y = 6 * scale;
 
 	// Draw clock on the right
-	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, 6 * scale + 1); // DROPSHADOW
-	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_COLOR, width - 97 * scale, 6 * scale);
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_DROPSHADOW_COLOR, width - 97 * scale + 1, font1Y); // DROPSHADOW
+	swr_draw_text_ex(&tb->swr, tb->clock, &m->font1, TEXT_COLOR, width - 97 * scale, font1Y);
 
+	int font2Y = font1Y + 2;
 	// Draw battery percentage
-	swr_draw_text_ex(&tb->swr, tb->battery_percentage, &m->font2, TEXT_COLOR, width - 200 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->battery_percentage, &m->font2, TEXT_COLOR, width - 200 * scale, font2Y);
 	// Draw date (human)
-	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font2, TEXT_COLOR, width - 400 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_human, &m->font2, TEXT_COLOR, width - 400 * scale, font2Y);
 	// Draw date (numbers)
-	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font2, TEXT_COLOR, width - 600 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->date_numbers, &m->font2, TEXT_COLOR, width - 600 * scale, font2Y);
 	// Draw disk space
-	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font2, TEXT_COLOR, width - 800 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->disk_space, &m->font2, TEXT_COLOR, width - 800 * scale, font2Y);
 	// Draw RAM usage
-	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font2, TEXT_COLOR, width - 1100 * scale, 6*scale+1);
+	swr_draw_text_ex(&tb->swr, tb->ram_usage, &m->font2, TEXT_COLOR, width - 1100 * scale, font2Y);
 
 	// Draw workspaces on the left
 	pthread_mutex_lock(&tb->workspaces_mutex);
@@ -760,7 +762,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
 
 		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgb(255,255,255), 0, 0);
-		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, 6*scale);
+		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, font1Y);
 	}
 
 	/*for (int i = 0; i < width * height; i++) {
