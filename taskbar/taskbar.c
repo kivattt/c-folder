@@ -118,7 +118,7 @@ int taskbar_read_workspace_json(struct TaskbarWorkspace *workspace, sj_Reader *r
 			workspace->urgent = val.start[0] == 't';
 		} else if (taskbar_json_eq(key, "focused")) {
 			workspace->focused = val.start[0] == 't';
-		} else if (taskbar_json_eq(key, "visible")) {
+		} else if (taskbar_json_eq(key, "visible")) { // This JSON key is only in GET_WORKSPACES output. Not WORKSPACE events.
 			workspace->visible = val.start[0] == 't';
 		} else if (taskbar_json_eq(key, "output")) {
 			size_t len = val.end - val.start;
@@ -725,6 +725,15 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			};
 
 			swr_draw_rectangle_rounded(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha), workspaceRadius);
+		} else if (tb->workspaces[i].visible) {
+			struct Rect r = {
+				.x = workspaceX - workspaceXInitial,
+				.y = highlightHeight,
+				.w = workspaceXStep,
+				.h = height - highlightHeight,
+			};
+
+			swr_draw_rectangle_rounded_outline(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha), workspaceRadius, 0.0, 0.0);
 		}
 
 		// Draw hovered rectangle when workspace is hovered

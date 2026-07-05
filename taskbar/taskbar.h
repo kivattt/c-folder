@@ -76,7 +76,7 @@ struct TaskbarWorkspace {
 	int num;
 	int urgent;
 	int focused;
-	int visible; // ?
+	int visible; // Is this workspace currently visible on a screen, aka "output"
 	char *output; // Monitor name (allocated in read_workspace_json)
 };
 
