@@ -715,7 +715,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		float workspaceRadius = 2.0 * scale;
 
-		// Draw focus outline when workspace is focused
+		// Draw focus rounded rectangle when workspace is focused
 		if (tb->workspaces[i].focused) {
 			struct Rect r = {
 				.x = workspaceX - workspaceXInitial,
@@ -725,7 +725,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			};
 
 			swr_draw_rectangle_rounded(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha), workspaceRadius);
-		} else if (tb->workspaces[i].visible) {
+		}/* else if (tb->workspaces[i].visible) { // Draw visible outline
 			struct Rect r = {
 				.x = workspaceX - workspaceXInitial,
 				.y = highlightHeight,
@@ -734,7 +734,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			};
 
 			swr_draw_rectangle_rounded_outline(&tb->swr, r, swr_rgba(255,255,255,highlightAlpha), workspaceRadius, 0.0, 0.0);
-		}
+		}*/
 
 		// Draw hovered rectangle when workspace is hovered
 		if (tb->hovered_workspace_index == i) {
