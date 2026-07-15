@@ -428,10 +428,14 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	}
 
 	tb->hovered_workspace_index = -1;
+	tb->need_keyboard_focus = 0;
 
 	// Wasteful to do multiple allocations, but it is simple...
 	tb->filename_lekton_font = malloc(256);
 	sprintf(tb->filename_lekton_font, "%s/Lekton-Regular-Edited.ttf", assets_folder);
+
+	tb->filename_inter_font = malloc(256);
+	sprintf(tb->filename_inter_font, "%s/Inter-Variable.ttf", assets_folder);
 
 	tb->filename_background = malloc(256);
 	sprintf(tb->filename_background, "%s/background.png", assets_folder);
@@ -522,7 +526,7 @@ int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int wi
 	return workspaceIndexHovered;
 }
 
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale) {
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale, int *need_keyboard_focus) {
 	if (tb == NULL) {
 		return;
 	}
@@ -578,9 +582,9 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 		} else if (e.scroll_value < 0) { // Scroll up (left)
 			if (prev != -1) swayipc_switch_workspace(&tb->ipc, prev + 1);
 		}
-
 	} else if (e.type == TB_Mouse1Pressed || e.type == TB_Mouse2Pressed) {
 		if (tb->hovered_workspace_index == -1) {
+			//tb->need_keyboard_focus ^= 1;
 			goto done;
 		}
 
@@ -588,6 +592,9 @@ void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *mon
 	}
 
 done:
+	if (need_keyboard_focus != NULL) {
+		*need_keyboard_focus = tb->need_keyboard_focus;
+	}
 	pthread_mutex_unlock(&tb->workspaces_mutex);
 }
 
@@ -605,7 +612,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 			tb->need_handle_input = 0;
 			struct TaskbarEvent e = tb->last_event;
 			e.type = TB_MouseMoved;
-			taskbar_handle_input_event(tb, monitor_index, monitor_name, e, width, height, bar_height_at_1x_scale);
+			taskbar_handle_input_event(tb, monitor_index, monitor_name, e, width, height, bar_height_at_1x_scale, NULL);
 		}
 		pthread_mutex_unlock(&tb->need_handle_input_mutex);
 	}

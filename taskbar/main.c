@@ -46,6 +46,42 @@ struct zxdg_output_manager_v1 *xdg_output_manager;
 
 struct wl_seat *seat;
 struct wl_pointer *pointer = NULL;
+struct wl_keyboard *keyboard = NULL;
+
+/////////////////////////////////////// SLOP BEGIN for keyboard handling
+
+// 1. Define the keyboard event callbacks
+// You must compile this keymap using libxkbcommon to translate raw codes into letters!
+static void keyboard_handle_keymap(void *data, struct wl_keyboard *kbd, uint32_t format, int32_t fd, uint32_t size) {}
+
+static void keyboard_handle_enter(void *data, struct wl_keyboard *kbd, uint32_t serial, struct wl_surface *surface, struct wl_array *keys) {
+    printf("Taskbar gained keyboard focus!\n");
+}
+
+static void keyboard_handle_leave(void *data, struct wl_keyboard *kbd, uint32_t serial, struct wl_surface *surface) {
+    printf("Taskbar lost keyboard focus!\n");
+}
+
+static void keyboard_handle_key(void *data, struct wl_keyboard *kbd, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
+    if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        printf("Key pressed: Linux scancode %d\n", key);
+    }
+}
+
+static void keyboard_handle_modifiers(void *data, struct wl_keyboard *kbd, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {}
+static void keyboard_handle_repeat_info(void *data, struct wl_keyboard *keyboard, int32_t rate, int32_t delay) {}
+
+// 2. Wrap them into the listener struct
+static const struct wl_keyboard_listener keyboard_listener = {
+    .keymap = keyboard_handle_keymap,
+    .enter = keyboard_handle_enter,
+    .leave = keyboard_handle_leave,
+    .key = keyboard_handle_key,
+    .modifiers = keyboard_handle_modifiers,
+	.repeat_info = keyboard_handle_repeat_info,
+};
+
+////////////////////////////////////// SLOP END for keyboard handling
 
 struct BarMonitor *bars = NULL;
 int n_monitors = 0;
@@ -166,6 +202,22 @@ static struct BarMonitor *find_bar(struct wl_surface *s) {
 	return NULL;
 }
 
+void set_want_keyboard_input(int yes) {
+	return;
+
+	struct BarMonitor *b = find_bar(current_surface);
+	if (!b) return;
+	
+	if (yes) {
+		zwlr_layer_surface_v1_set_keyboard_interactivity(b->layer_surface, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_ON_DEMAND);
+	} else {
+		zwlr_layer_surface_v1_set_keyboard_interactivity(b->layer_surface, ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE);
+	}
+
+	//wl_surface_commit(surface...);
+	//wl_surface_flush(display...);
+}
+
 static void pointer_enter(void *data, struct wl_pointer *p,
 	uint32_t serial, struct wl_surface *surface,
 	wl_fixed_t sx, wl_fixed_t sy)
@@ -191,7 +243,9 @@ static void pointer_enter(void *data, struct wl_pointer *p,
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
 
-	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+	int need_keyboard_focus = 0;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT, &need_keyboard_focus);
+	set_want_keyboard_input(need_keyboard_focus);
 }
 
 static void pointer_leave(void *data, struct wl_pointer *p,
@@ -210,7 +264,9 @@ static void pointer_leave(void *data, struct wl_pointer *p,
 
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
-	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+	int need_keyboard_focus = 0;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT, &need_keyboard_focus);
+	set_want_keyboard_input(need_keyboard_focus);
 
 	current_surface = NULL;
 }
@@ -236,7 +292,7 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
-	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT, NULL);
 }
 
 static void pointer_button(void *data, struct wl_pointer *p,
@@ -273,7 +329,9 @@ static void pointer_button(void *data, struct wl_pointer *p,
 
 	int bw = b->width * b->scale;
 	int bh = b->height * b->scale;
-	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+	int need_keyboard_focus = 0;
+	taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT, &need_keyboard_focus);
+	set_want_keyboard_input(need_keyboard_focus);
 }
 
 static void pointer_axis(void *data, struct wl_pointer *p, uint32_t time, uint32_t axis, wl_fixed_t value) {
@@ -294,7 +352,7 @@ static void pointer_axis(void *data, struct wl_pointer *p, uint32_t time, uint32
 		};
 		int bw = b->width * b->scale;
 		int bh = b->height * b->scale;
-		taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT);
+		taskbar_handle_input_event(&taskbar, index, b->name, e, bw, bh, BAR_HEIGHT, NULL);
 	}
 }
 
@@ -351,10 +409,7 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time) {
 
 /* ================= SEAT ================= */
 
-static void seat_capabilities(void *data,
-	struct wl_seat *seat,
-	uint32_t caps)
-{
+static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t caps) {
 	if (caps & WL_SEAT_CAPABILITY_POINTER) {
 		if (!pointer) {
 			pointer = wl_seat_get_pointer(seat);
@@ -366,6 +421,14 @@ static void seat_capabilities(void *data,
 			pointer = NULL;
 		}
 	}
+
+    if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !keyboard) {
+        keyboard = wl_seat_get_keyboard(seat);
+        wl_keyboard_add_listener(keyboard, &keyboard_listener, NULL);
+    } else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && keyboard) {
+        wl_keyboard_destroy(keyboard);
+        keyboard = NULL;
+    }
 }
 
 static void seat_name(void *data, struct wl_seat *seat, const char *name) {}
@@ -464,7 +527,7 @@ static void create_bar(struct BarMonitor *b) {
 
 	zwlr_layer_surface_v1_set_keyboard_interactivity(
 		b->layer_surface,
-		ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE
+		ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE // The default keyboard interactivity is none, until the taskbar wants it
 	);
 
 	zwlr_layer_surface_v1_add_listener(b->layer_surface,

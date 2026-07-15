@@ -100,11 +100,13 @@ struct Taskbar {
 	char disk_space[64]; // Enough for "root: 696969.2 GB"
 	char battery_percentage[20]; // Enough for "100.0%" (including the null byte)
 	char *filename_lekton_font;
+	char *filename_inter_font;
 	char *filename_background;
 	int hovered_workspace_index;
 
 	struct TaskbarEvent last_event;
 	int is_mouse_inside;
+	int need_keyboard_focus; // We want Wayland to capture keyboard events on the taskbar whenever this is set to 1.
 	int need_handle_input; // When a workspace changed, the hovered one may have changed even when no new mouse inputs were handled. Forces a TB_MouseMoved event in this case.
 	pthread_mutex_t need_handle_input_mutex;
 
@@ -119,7 +121,7 @@ struct Taskbar {
 
 int taskbar_initialize(struct Taskbar *tb, char *assets_folder);
 void taskbar_deinitialize(struct Taskbar *tb);
-void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale);
+void taskbar_handle_input_event(struct Taskbar *tb, int monitor_index, char *monitor_name, struct TaskbarEvent e, int width, int height, int bar_height_at_1x_scale, int *need_keyboard_focus);
 void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uint32_t *framebuffer, int width, int height, int bar_height_at_1x_scale);
 
 // Internal functions
