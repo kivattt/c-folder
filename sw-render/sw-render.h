@@ -59,8 +59,8 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 void swr_convert_image_argb_to_abgr(uint32_t *img, int length); // These two are the same.
 void swr_convert_image_abgr_to_argb(uint32_t *img, int length); // These two are the same.
 void swr_blur_image(uint32_t *img, int width, int height); // Blur in-place. (Allocates temporary f32 buffers larger than the input img!)
-float swr_srgb_to_linear(float val);
 float swr_linear_to_srgb(float val);
+float swr_srgb_to_linear(float val);
 
 // Internal functions
 void swr_crash_if_dest_is_null(struct SWRender *swr);

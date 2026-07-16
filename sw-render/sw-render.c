@@ -310,7 +310,7 @@ struct Rect swr_draw_text_impl(struct SWRender *swr, const char *text, struct Fo
 			pen_y += glyph.advance_y >> 6;
 
 			if (c == '\n') {
-				pen_x = 0;
+				pen_x = x;
 			}
 
 			// TODO: Add bounding_box growth here aswell
@@ -495,12 +495,16 @@ void swr_draw_rectangle_rounded_outline(struct SWRender *swr, struct Rect rect, 
 	}
 }
 
-float swr_srgb_to_linear(float val) {
-	return pow(val, 2.2);
+float swr_linear_to_srgb(float val) {
+	// For some reason, "gamma 2.2" actually means gamma 1.5.
+	// Fuck you. That's why
+	// source: my eyes
+	return pow(val, 1.0 / 1.5);
 }
 
-float swr_linear_to_srgb(float val) {
-	return pow(val, 1.0 / 2.2);
+float swr_srgb_to_linear(float val) {
+	// Should this be 1.5 aswell?
+	return pow(val, 2.2);
 }
 
 void swr_blur_image(uint32_t *img, int width, int height) {
