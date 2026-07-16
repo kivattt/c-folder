@@ -15,7 +15,6 @@ It is a modified version of [Lekton](https://fonts.google.com/specimen/Lekton) w
 ## TODO
 - Fix scrolling on my laptop touchpad (its way too fast and should work like swaybar)
 - Blur background
-- RAM usage
 - Make date a pretty 2-line thing
 - Dynamic battery icon?
 - Choose a different font for text (probably Inter)
