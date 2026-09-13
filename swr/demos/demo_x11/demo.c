@@ -126,6 +126,9 @@ int main() {
 	//struct SWRender r;
 	//swr_initialize(&r);
 
+	struct swr_output r;
+	swr_initialize(&r);
+
 	bool running = true;
 
 	while (running) {
@@ -147,8 +150,6 @@ int main() {
 			}
 		}
 
-		//swr_tmp(renderer.pixels, renderer.width, renderer.height);
-
 		/*swr_set_output(&r, renderer.pixels, renderer.width, renderer.height);
 		swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
 		swr_draw_text(&r, "hello, world!", 22, swr_rgb(255,255,255), 80, 80);
@@ -164,6 +165,6 @@ int main() {
 	XDestroyWindow(dpy, window);
 	XCloseDisplay(dpy);
 
-	//swr_deinitialize(&r);
+	swr_deinitialize(&r);
 	return 0;
 }
