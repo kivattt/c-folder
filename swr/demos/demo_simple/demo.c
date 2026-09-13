@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #define SWR_IMPLEMENTATION
-#include "../swr.h"
+#include "../../swr.h"
 
 int main() {
 	struct swr_output swr;

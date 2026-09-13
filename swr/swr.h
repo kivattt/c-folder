@@ -14,9 +14,9 @@
 #include FT_FREETYPE_H
 
 struct swr_glyph_bitmap {
-	int width;
-	int rows; // height
-	int pitch; // byte offset to get the next row
+	unsigned int width;
+	unsigned int rows; // height
+	unsigned int pitch; // byte offset to get the next row
 	uint8_t *bitmap_data;
 
 	// Advance x and y from Freetype2, (shift right by 6 to get pixel amount)
@@ -41,7 +41,7 @@ struct swr_output {
 	int height;
 
 	struct swr_font default_font;
-	uint32_t last_default_font_size;
+	int32_t last_default_font_size;
 };
 
 /* PUBLIC FUNCTIONS */
@@ -54,8 +54,8 @@ struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list
 void swr_fontbmp_deinitialize(struct swr_font font);
 // These two functions free the font.bitmap_data before re-allocating it.
 // font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
-FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const int font_height_pixels);
-FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels);
+FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const unsigned int font_height_pixels);
+FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const unsigned int font_height_pixels);
 
 #define SWR_IMPLEMENTATION // DEV
 #ifdef SWR_IMPLEMENTATION
@@ -89,7 +89,7 @@ void swr_fontbmp_deinitialize(struct swr_font font) {
 
 // Frees the font.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const int font_height_pixels) {
+FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const unsigned int font_height_pixels) {
 	assert(font != NULL);
 
 	int fd = open(font_filename, O_RDONLY);
@@ -104,8 +104,9 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 		return 1;
 	}
 
-	FT_Long font_data_size = st.st_size;
+	size_t font_data_size = (size_t)st.st_size;
 	unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
+	//unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
 	FT_Error err = swr_fontbmp_generate_from_memory(font, font_data, font_data_size, font_height_pixels);
 	if (err) {
 		return err;
@@ -119,7 +120,7 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 
 // Frees the font.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, FT_Long font_data_size, const int font_height_pixels) {
+FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const unsigned int font_height_pixels) {
 	assert(font != NULL);
 
 	FT_Library library;
@@ -132,7 +133,7 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 		goto done;
 	}
 
-	error = FT_New_Memory_Face(library, font_data, font_data_size, 0, &face);
+	error = FT_New_Memory_Face(library, font_data, (FT_Long)font_data_size, 0, &face);
 	if (error) {
 		goto done;
 	}
@@ -143,20 +144,20 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 	}
 
 	/* Figure out how big the resulting bitmap data will be */
-	int bitmap_size = 0;
+	unsigned int bitmap_size = 0;
 	for (int character = 0; character <= 255; character++) {
 		if (character == ' ' || character == '\t' || character == '\n') {
 			continue;
 		}
 
-		error = FT_Load_Char(face, character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
+		error = FT_Load_Char(face, (FT_ULong)character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
 		if (error) {
 			goto done;
 		}
 
-		int width = face->glyph->bitmap.width;
-		int pitch = face->glyph->bitmap.pitch;
-		int rows = face->glyph->bitmap.rows;
+		unsigned int width = face->glyph->bitmap.width;
+		unsigned int pitch = (unsigned int)face->glyph->bitmap.pitch;
+		unsigned int rows = face->glyph->bitmap.rows;
 		assert(pitch == width);
 		if (!face->glyph->bitmap.buffer) {
 			continue;
@@ -170,7 +171,7 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 	font->internal_bitmap_data = malloc(bitmap_size);
 	memset(font->internal_bitmap_data, 0, bitmap_size);
 
-	int index = 0;
+	unsigned int index = 0;
 	for (int character = 0; character <= 255; character++) {
 		font->glyph_list[character] = (struct swr_glyph_bitmap){.width = 0, .rows = 0, .bitmap_data = NULL};
 
@@ -200,7 +201,7 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 			continue;
 		}
 
-		error = FT_Load_Char(face, character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
+		error = FT_Load_Char(face, (FT_ULong)character, FT_LOAD_RENDER); // FT_LOAD_RENDER calls FT_Render_Glyph for us.
 		if (error) {
 			goto done;
 		}
@@ -213,13 +214,12 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 		assert(face->glyph->bitmap.pixel_mode == 2);
 		assert(face->glyph->bitmap.palette_mode == 0);
 		assert(face->glyph->bitmap.palette == 0);
-		assert(face->glyph->bitmap.pitch == face->glyph->bitmap.width);
+		assert((unsigned int)face->glyph->bitmap.pitch == face->glyph->bitmap.width);
 
-		int width = face->glyph->bitmap.width;
-		int pitch = face->glyph->bitmap.pitch;
-		int rows = face->glyph->bitmap.rows;
+		unsigned int width = face->glyph->bitmap.width;
+		unsigned int pitch = (unsigned int)face->glyph->bitmap.pitch;
+		unsigned int rows = face->glyph->bitmap.rows;
 
-		assert(pitch >= 0);
 		assert(width == pitch);
 
 		memcpy(&font->internal_bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
