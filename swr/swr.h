@@ -57,15 +57,18 @@ void swr_fontbmp_deinitialize(struct swr_font font);
 FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const unsigned int font_height_pixels);
 FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const unsigned int font_height_pixels);
 
-#define SWR_IMPLEMENTATION // DEV
-#ifdef SWR_IMPLEMENTATION
+/* IMPLEMENTATION */
+#define USE_DURING_DEVELOPMENT // This is just here to prevent my vim syntax highlighting from greying out the implementation.
+#if defined(SWR_IMPLEMENTATION) || defined(USE_DURING_DEVELOPMENT)
 
 void swr_initialize(struct swr_output *swr) {
+#ifdef USE_DURING_DEVELOPMENT
+	printf("\x1b[31mRemember to remove USE_DURING_DEVELOPMENT !\x1b[0m\n");
+#endif
 	if (swr == NULL) {
 		printf("swr: swr_initialize called with a NULL pointer. Remember: your swr_output struct should be on the stack!\n");
 		assert(0);
 	}
-
 	memset(swr, 0, sizeof(struct swr_output));
 	swr->last_default_font_size = -1;
 	swr->default_font = swr_fontbmp_initialize();
@@ -75,7 +78,11 @@ void swr_deinitialize(struct swr_output *swr) {
 	swr_fontbmp_deinitialize(swr->default_font);
 }
 
+/* FONT BITMAP FUNCTIONS */
 struct swr_font swr_fontbmp_initialize() {
+#ifdef USE_DURING_DEVELOPMENT
+	printf("\x1b[31mRemember to remove USE_DURING_DEVELOPMENT !\x1b[0m\n");
+#endif
 	struct swr_font out;
 	out.glyph_list = malloc(sizeof(struct swr_glyph_bitmap) * 256);
 	out.internal_bitmap_data = NULL;
@@ -101,21 +108,17 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 	struct stat st;
 	if (fstat(fd, &st) == -1) {
 		printf("swr_fontbmp_generate: Failed to stat font file: %s\n", font_filename);
+		close(fd);
 		return 1;
 	}
 
 	size_t font_data_size = (size_t)st.st_size;
 	unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
-	//unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
 	FT_Error err = swr_fontbmp_generate_from_memory(font, font_data, font_data_size, font_height_pixels);
-	if (err) {
-		return err;
-	}
 
 	close(fd);
 	munmap(font_data, font_data_size);
-
-	return 0;
+	return err;
 }
 
 // Frees the font.bitmap_data before re-allocating it.

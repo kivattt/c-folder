@@ -123,9 +123,6 @@ int main() {
 		return 1;
 	}
 
-	//struct SWRender r;
-	//swr_initialize(&r);
-
 	struct swr_output r;
 	swr_initialize(&r);
 

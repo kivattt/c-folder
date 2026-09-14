@@ -1,3 +1,6 @@
+# This is a WIP, do not use!
+It will be a single-header version of my ../sw-render library
+
 # Compiling
 ```
 gcc $(pkg-config --cflags freetype2) -lfreetype
