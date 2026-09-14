@@ -1,1 +1,1 @@
-gcc -Wall -Wextra -Wconversion demo.c -o demo $(pkg-config --cflags freetype2) -lfreetype
+gcc -Wall -Wextra -Wconversion demo.c -o demo $(pkg-config --cflags freetype2) -lfreetype -lm

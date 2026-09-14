@@ -110,7 +110,7 @@ int main() {
 	unsigned int height = 720;
 
 	Window window = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 100, 100, width, height, 0, 0, 0);
-	XStoreName(dpy, window, "MIT-SHM Software Renderer");
+	XStoreName(dpy, window, "swr software rendering on X11 shared memory");
 	XSelectInput(dpy, window, ExposureMask | StructureNotifyMask | KeyPressMask);
 	Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 	XSetWMProtocols(dpy, window, &wm_delete, 1);
@@ -148,9 +148,11 @@ int main() {
 		}
 
 		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
-		swr_draw_fill(&r, swr_rgb(0, 255, 0));
+		swr_draw_fill(&r, swr_rgb(18, 18, 20));
 		/*swr_draw_text(&r, "hello, world!", 22, swr_rgb(255,255,255), 80, 80);
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);*/
+
+		swr_draw_text(&r, "hello, world!", 22, swr_rgb(255,255,255), 80, 80);
 
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);

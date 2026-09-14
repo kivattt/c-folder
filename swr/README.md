@@ -3,10 +3,11 @@ It will be a single-header version of my ../sw-render library
 
 # Compiling
 ```
-gcc $(pkg-config --cflags freetype2) -lfreetype
+gcc $(pkg-config --cflags freetype2) -lfreetype -lm
 
-# On my Linux Mint computer, that is:
-gcc -I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
+# On my Linux Mint computer, the output of this command:
+# pkg-config --cflags freetype2
+-I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
 ```
 
 # Changes
