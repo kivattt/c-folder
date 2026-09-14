@@ -1,0 +1,5 @@
+# Make sure my clangd LSP correctly identifies the .h file as C, not C++
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [-xc-header, -std=c17]

@@ -147,8 +147,8 @@ int main() {
 			}
 		}
 
-		/*swr_set_output(&r, renderer.pixels, renderer.width, renderer.height);
-		swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
+		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
+		/*swr_draw_fill_background(&r, swr_rgb(0, 0, 0));
 		swr_draw_text(&r, "hello, world!", 22, swr_rgb(255,255,255), 80, 80);
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);*/
 

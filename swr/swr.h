@@ -48,6 +48,7 @@ struct swr_output {
 
 void swr_initialize(struct swr_output *swr);
 void swr_deinitialize(struct swr_output *swr);
+void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int height);
 
 /* FONT BITMAP GENERATION FUNCTIONS */
 struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
@@ -56,6 +57,8 @@ void swr_fontbmp_deinitialize(struct swr_font font);
 // font_height_pixels sets the height of the EM square in pixels. Characters will usually appear smaller than specified, but could even be larger!
 FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const unsigned int font_height_pixels);
 FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const unsigned int font_height_pixels);
+
+/* END OF PUBLIC FUNCTIONS */
 
 /* IMPLEMENTATION */
 #define USE_DURING_DEVELOPMENT // This is just here to prevent my vim syntax highlighting from greying out the implementation.
@@ -75,7 +78,18 @@ void swr_initialize(struct swr_output *swr) {
 }
 
 void swr_deinitialize(struct swr_output *swr) {
+	assert(swr != NULL);
 	swr_fontbmp_deinitialize(swr->default_font);
+}
+
+void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int height) {
+	// We allow swr to be NULL.
+	// Other functions check for NULL and return early instead of here.
+	assert(width >= 0);
+	assert(height >= 0);
+	swr->dest = dest;
+	swr->width = width;
+	swr->height = height;
 }
 
 /* FONT BITMAP FUNCTIONS */
@@ -253,6 +267,9 @@ done:
 	return error;
 }
 
+/* END OF FONT BITMAP FUNCTIONS */
+
 #endif // SWR_IMPLEMENTATION
+/* END OF IMPLEMENTATION */
 
 #endif // SWR_H
