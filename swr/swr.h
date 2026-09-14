@@ -54,6 +54,9 @@ void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int heigh
 uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 
+// Drawing functions
+void swr_draw_fill(struct swr_output *swr, uint32_t color);
+
 /* FONT BITMAP GENERATION FUNCTIONS */
 struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
 void swr_fontbmp_deinitialize(struct swr_font font);
@@ -102,6 +105,34 @@ uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
 	return swr_rgba(r, g, b, 0xff);
+}
+
+void swr_draw_fill(struct swr_output *swr, uint32_t color) {
+	if (swr == NULL || swr->dest == NULL) {
+		return;
+	}
+
+	int size = swr->width * swr->height;
+	for (int i = 0; i < size; i++) {
+		swr->dest[i] = color;
+	}
+
+	// 5 - 6 ms
+/*#define N 4096
+
+	uint32_t src[N];
+	for (int i = 0; i < N; i++) src[i] = color;
+
+	for (int i = 0; i < swr->width * swr->height; i += N) {
+		memcpy(swr->dest + i, &src, sizeof(uint32_t) * N);
+	}*/
+
+	// 13 ms
+	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
+
+	for (int i = 0; i < swr->width * swr->height; i += 4) {
+		_mm512_storeu_si512(swr->dest + i, src);
+	}*/
 }
 
 /* FONT BITMAP FUNCTIONS */
