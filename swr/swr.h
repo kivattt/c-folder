@@ -50,6 +50,10 @@ void swr_initialize(struct swr_output *swr);
 void swr_deinitialize(struct swr_output *swr);
 void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int height);
 
+// Color functions. These return ARGB values
+uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
+
 /* FONT BITMAP GENERATION FUNCTIONS */
 struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
 void swr_fontbmp_deinitialize(struct swr_font font);
@@ -90,6 +94,14 @@ void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int heigh
 	swr->dest = dest;
 	swr->width = width;
 	swr->height = height;
+}
+
+uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	return a << 24 | r << 16 | g << 8 | b;
+}
+
+uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
+	return swr_rgba(r, g, b, 0xff);
 }
 
 /* FONT BITMAP FUNCTIONS */
