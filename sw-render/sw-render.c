@@ -33,10 +33,9 @@ void swr_set_output(struct SWRender *swr, uint32_t *dest, int width, int height)
 	swr->height = height;
 }
 
-// FIXME: Output to stderr
 void swr_crash_if_dest_is_null(struct SWRender *swr) {
 	if (swr->dest == NULL) {
-		printf("sw-render: dest was NULL, did you forget to call swr_set_output() ?\n");
+		fprintf(stderr, "sw-render: dest was NULL, did you forget to call swr_set_output() ?\n");
 		assert(0);
 	}
 }
