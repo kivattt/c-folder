@@ -146,17 +146,17 @@ uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
 // 8-bit ARGB colors
 uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	// Fast paths
-	// 41.1% of branches go here for text rendering
+	// 41.1% of branches go here for text rendering (see img/text-alpha-freq.png)
 	if (src >> 24 == 0x00) {
 		return dest;
 	}
 
-	// 10.6% of branches go here for text rendering
+	// 10.6% of branches go here for text rendering (see img/text-alpha-freq.png)
 	if (src >> 24 == 0xFF) {
 		return src;
 	}
 
-	// 48.3% of branches go here for text rendering
+	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
 
 	/* On benchmark (desktop): gcc: 367ms clang: 182ms */
 	/* On benchmark (laptop): gcc: 318ms clang: 154ms */
