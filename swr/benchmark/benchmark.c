@@ -101,7 +101,7 @@ int main() {
 		swr_deinitialize(&r);
 
 		free(buffer);
-		printf("\x1b[1;30mswr_draw_fill() (res: %i x %i) %i times:\x1b[0m %f ms [avg: %f ms]\n", width, height, n_times, duration, duration / (double)n_times);
+		printf("\x1b[1;30mswr_draw_fill() (res: %i x %i) %i times:\x1b[0m %f ms [avg: %f ms] [%f GB/s]\n", width, height, n_times, duration, duration / (double)n_times, ((float)((uint64_t)n_times * (uint64_t)width*(uint64_t)height*4) * (1000.0f / duration)) / 1000000000.0F);
 	}
 
 	// swr_abgr_to_argb()
