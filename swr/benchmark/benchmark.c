@@ -31,7 +31,7 @@ int main() {
 			swr_fontbmp_generate_from_memory(&font, font_data, font_data_size, font_size);
 		}
 		duration = time_millis() - start;
-		printf("\x1b[1;30mswr_fontbmp_generate_from_memory (font size: %i) %i times:\x1b[0m %f ms\n", font_size, n_times, duration);
+		printf("\x1b[1;30mswr_fontbmp_generate_from_memory (font size: %i) %i times:\x1b[0m %f ms [avg: %f ms]\n", font_size, n_times, duration, duration / (double)n_times);
 		close(fd);
 		munmap(font_data, font_data_size);
 		swr_fontbmp_deinitialize(font);
@@ -50,7 +50,7 @@ int main() {
 		}
 		result += 1; // To prevent -Wunused-but-set-variable warning
 		duration = time_millis() - start;
-		printf("\x1b[1;30mswr_alpha_blend    %i times:\x1b[0m %f ms\n", n_times, duration);
+		printf("\x1b[1;30mswr_alpha_blend    %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
 	}
 
 	// swr_linear_to_srgb()
@@ -63,6 +63,33 @@ int main() {
 		}
 		result += 1.0F; // To prevent -Wunused-but-set-variable warning
 		duration = time_millis() - start;
-		printf("\x1b[1;30mswr_linear_to_srgb %i times:\x1b[0m %f ms\n", n_times, duration);
+		printf("\x1b[1;30mswr_linear_to_srgb %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
+	}
+
+	// swr_draw_fill()
+	{
+		n_times = 100;
+		int width = 3840;
+		int height = 2160;
+		uint32_t *buffer = malloc((size_t)(width*height * (int)sizeof(uint32_t)));
+		struct swr_output r;
+		swr_initialize(&r);
+		swr_set_output(&r, buffer, width, height);
+
+		uint32_t color = swr_rgb(18, 18, 20);
+		start = time_millis();
+		for (int i = 0; i < n_times; i++) {
+			// Both of these are required to prevent the compiler from only doing 1 iteration of this for-loop
+			buffer[0] = 0;
+			buffer[1] = 0;
+
+			swr_draw_fill(&r, color);
+		}
+		duration = time_millis() - start;
+
+		swr_deinitialize(&r);
+
+		free(buffer);
+		printf("\x1b[1;30mswr_draw_fill() (res: %i x %i) %i times:\x1b[0m %f ms [avg: %f ms]\n", width, height, n_times, duration, duration / (double)n_times);
 	}
 }
