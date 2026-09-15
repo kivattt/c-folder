@@ -191,38 +191,39 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	return result;*/
 
-	int src_r = (src >> 16) & 0xFF;
-	int src_g = (src >>  8) & 0xFF;
-	int src_b = (src >>  0) & 0xFF;
-	__m128i src_color = _mm_set_epi32(0, src_r, src_g, src_b); // alpha unused
+	short int src_r = (src >> 16) & 0xFF;
+	short int src_g = (src >>  8) & 0xFF;
+	short int src_b = (src >>  0) & 0xFF;
+	__m128i src_color = _mm_set_epi16(0,0,0,0, 0, src_r, src_g, src_b); // alpha unused
 
-	int dest_r = (dest >> 16) & 0xFF;
-	int dest_g = (dest >>  8) & 0xFF;
-	int dest_b = (dest >>  0) & 0xFF;
-	__m128i dest_color = _mm_set_epi32(0, dest_r, dest_g, dest_b); // alpha unused
+	short int dest_r = (dest >> 16) & 0xFF;
+	short int dest_g = (dest >>  8) & 0xFF;
+	short int dest_b = (dest >>  0) & 0xFF;
+	__m128i dest_color = _mm_set_epi16(0,0,0,0, 0, dest_r, dest_g, dest_b); // alpha unused
 
-	int a = (int)(src >> 24);
-	__m128i alpha = _mm_set1_epi32(a);
-	__m128i one_minus_alpha = _mm_sub_epi32(_mm_set1_epi32(255), alpha);
+	short int a = (short int)(src >> 24);
+	__m128i alpha = _mm_set1_epi16(a);
+	__m128i one_minus_alpha = _mm_sub_epi16(_mm_set1_epi16(255), alpha);
 
 	// src *= alpha
-	src_color = _mm_mullo_epi32(src_color, alpha);
+	src_color = _mm_mullo_epi16(src_color, alpha);
 	// dest *= 1.0 - alpha
-	dest_color = _mm_mullo_epi32(dest_color, one_minus_alpha);
+	dest_color = _mm_mullo_epi16(dest_color, one_minus_alpha);
 
 	// dest += src
-	dest_color = _mm_add_epi32(dest_color, src_color);
+	dest_color = _mm_add_epi16(dest_color, src_color);
 
 	// dest /= 255
-	dest_color = _mm_add_epi32(dest_color, _mm_set1_epi32(511)); // 256*256 - 255*255
-	dest_color = _mm_srli_epi32(dest_color, 8);
-	dest_color = _mm_sub_epi32(dest_color, _mm_set1_epi32(1));
+	dest_color = _mm_add_epi16(dest_color, _mm_set1_epi16(511)); // 256*256 - 255*255
+	dest_color = _mm_srli_epi16(dest_color, 8);
+	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
+
+	//uint32_t result = _mm_extract_epi16(dest_color, 2);
 
 	uint32_t result = 0xFF000000;
-
-	result |= (uint32_t)(_mm_extract_epi32(dest_color, 2) << 16); // red
-	result |= (uint32_t)(_mm_extract_epi32(dest_color, 1) <<  8); // green
-	result |= (uint32_t)(_mm_extract_epi32(dest_color, 0) <<  0); // blue
+	result |= (uint32_t)(_mm_extract_epi16(dest_color, 2)) << 16; // red
+	result |= (uint32_t)(_mm_extract_epi16(dest_color, 1)) <<  8; // green
+	result |= (uint32_t)(_mm_extract_epi16(dest_color, 0)) <<  0; // blue
 
 	return result;
 }
