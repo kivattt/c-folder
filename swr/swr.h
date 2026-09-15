@@ -154,7 +154,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 		return src;
 	}
 
-	/* On benchmark: gcc: 367ms clang: 182ms */
+	/* On benchmark (desktop): gcc: 367ms clang: 182ms */
 	/*uint8_t a = (uint8_t)(src >> 24);
 	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
 	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
@@ -162,7 +162,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
 
-	/* On benchmark: gcc: 257ms clang: 165ms */
+	/* On benchmark (desktop): gcc: 257ms clang: 165ms */
 	short int src_r = (src >> 16) & 0xFF;
 	short int src_g = (src >>  8) & 0xFF;
 	short int src_b = (src >>  0) & 0xFF;
