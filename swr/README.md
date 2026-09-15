@@ -16,3 +16,6 @@ gcc $(pkg-config --cflags freetype2) -lfreetype -lm
 
 `swr_draw_fill_background()` was changed to `swr_draw_fill()`
 
+# Text transparency value frequency
+
+<img src="img/text-alpha-freq.png"></img>
