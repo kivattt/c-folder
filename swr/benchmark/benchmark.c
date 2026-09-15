@@ -75,15 +75,13 @@ int main() {
 		struct swr_output r;
 		swr_initialize(&r);
 		swr_set_output(&r, buffer, width, height);
+		volatile uint32_t f_you_compiler = 0; // To prevent the compiler from only running 1 iteration of the for-loop
 
 		uint32_t color = swr_rgb(18, 18, 20);
 		start = time_millis();
 		for (int i = 0; i < n_times; i++) {
-			// Both of these are required to prevent the compiler from only doing 1 iteration of this for-loop
-			buffer[0] = 0;
-			buffer[1] = 0;
-
 			swr_draw_fill(&r, color);
+			f_you_compiler += buffer[0];
 		}
 		duration = time_millis() - start;
 
