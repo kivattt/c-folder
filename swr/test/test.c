@@ -73,7 +73,7 @@ int test_swr_rect_intersect() {
 	return 0;
 }
 
-/*int test_swr_abgr_to_argb() {
+int test_swr_abgr_to_argb() {
 	uint32_t input =    0xFFAABBCC;
 	uint32_t expected = 0xFFCCBBAA;
 	uint32_t result = swr_abgr_to_argb(input);
@@ -87,7 +87,7 @@ int test_swr_rect_intersect() {
 
 	print_green(" Success\n");
 	return 0;
-}*/
+}
 
 int test_swr_alpha_blend() {
 	uint32_t dest     = 0xFF000000;
@@ -149,11 +149,11 @@ int main() {
 		failed = 1;
 	}
 
-	/*print_gray("test_swr_abgr_to_argb():");
+	print_gray("test_swr_abgr_to_argb():");
 	result = test_swr_abgr_to_argb();
 	if (result != 0) {
 		failed = 1;
-	}*/
+	}
 
 	print_gray("test_swr_alpha_blend():");
 	result = test_swr_alpha_blend();

@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <immintrin.h> // Provides _rotr()
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -13,6 +14,12 @@
 #include <unistd.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
+#ifdef __clang__
+	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
+#else
+	#define SWR_ROTR(a, b) _rotr((a), (b))
+#endif
 
 #define SWR_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define SWR_MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -69,6 +76,7 @@ struct swr_float_rect {
 	uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	float swr_linear_to_srgb(float val);
+	uint32_t swr_abgr_to_argb(uint32_t abgr);
 
 	// Drawing functions
 	void swr_draw_fill(struct swr_output *swr, uint32_t color);
@@ -151,6 +159,10 @@ float swr_linear_to_srgb(float val) {
 	// Fuck you. That's why
 	// source: my eyes
 	return (float)pow(val, 1.0 / 1.5);
+}
+
+uint32_t swr_abgr_to_argb(uint32_t abgr) {
+	return SWR_ROTR(__builtin_bswap32(abgr), 8);
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
