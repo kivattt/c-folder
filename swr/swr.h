@@ -77,6 +77,8 @@ struct swr_float_rect {
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	float swr_linear_to_srgb(float val);
 	uint32_t swr_abgr_to_argb(uint32_t abgr);
+	float swr_argb_to_float_alpha(uint32_t argb);
+	uint32_t swr_float_alpha_to_argb(float alpha);
 
 	// Drawing functions
 	void swr_draw_fill(struct swr_output *swr, uint32_t color);
@@ -163,6 +165,14 @@ float swr_linear_to_srgb(float val) {
 
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return SWR_ROTR(__builtin_bswap32(abgr), 8);
+}
+
+float swr_argb_to_float_alpha(uint32_t argb) {
+	return (float)(argb >> 24) / 255.0F;
+}
+
+uint32_t swr_float_alpha_to_argb(float alpha) {
+	return (uint8_t)(alpha * 255.0) << 24;
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
