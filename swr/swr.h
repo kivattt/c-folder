@@ -154,15 +154,23 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 		return src;
 	}
 
-	float src_r = (float)((src >> 16) & 0xFF);
+	/*
+	uint8_t a = (uint8_t)(src >> 24);
+	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
+	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
+	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
+
+	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
+
+	/*float src_r = (float)((src >> 16) & 0xFF);
 	float src_g = (float)((src >>  8) & 0xFF);
 	float src_b = (float)((src >>  0) & 0xFF);
-	__m128 src_color = _mm_set_ps(0.0F /* alpha unused */, src_r, src_g, src_b);
+	__m128 src_color = _mm_set_ps(0.0F, src_r, src_g, src_b); // alpha unused
 
 	float dest_r = (float)((dest >> 16) & 0xFF);
 	float dest_g = (float)((dest >>  8) & 0xFF);
 	float dest_b = (float)((dest >>  0) & 0xFF);
-	__m128 dest_color = _mm_set_ps(0.0F /* alpha unused */, dest_r, dest_g, dest_b);
+	__m128 dest_color = _mm_set_ps(0.0F, dest_r, dest_g, dest_b); // alpha unused
 
 	float a = (float)(src >> 24);
 	__m128 alpha = _mm_set1_ps(a);
@@ -181,15 +189,42 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	result |= (uint32_t)(_mm_extract_epi32(as_integers, 1) <<  8); // green
 	result |= (uint32_t)(_mm_extract_epi32(as_integers, 0) <<  0); // blue
 
+	return result;*/
+
+	int src_r = (src >> 16) & 0xFF;
+	int src_g = (src >>  8) & 0xFF;
+	int src_b = (src >>  0) & 0xFF;
+	__m128i src_color = _mm_set_epi32(0, src_r, src_g, src_b); // alpha unused
+
+	int dest_r = (dest >> 16) & 0xFF;
+	int dest_g = (dest >>  8) & 0xFF;
+	int dest_b = (dest >>  0) & 0xFF;
+	__m128i dest_color = _mm_set_epi32(0, dest_r, dest_g, dest_b); // alpha unused
+
+	int a = (int)(src >> 24);
+	__m128i alpha = _mm_set1_epi32(a);
+	__m128i one_minus_alpha = _mm_sub_epi32(_mm_set1_epi32(255), alpha);
+
+	// src *= alpha
+	src_color = _mm_mullo_epi32(src_color, alpha);
+	// dest *= 1.0 - alpha
+	dest_color = _mm_mullo_epi32(dest_color, one_minus_alpha);
+
+	// dest += src
+	dest_color = _mm_add_epi32(dest_color, src_color);
+
+	// dest /= 255
+	dest_color = _mm_add_epi32(dest_color, _mm_set1_epi32(511)); // 256*256 - 255*255
+	dest_color = _mm_srli_epi32(dest_color, 8);
+	dest_color = _mm_sub_epi32(dest_color, _mm_set1_epi32(1));
+
+	uint32_t result = 0xFF000000;
+
+	result |= (uint32_t)(_mm_extract_epi32(dest_color, 2) << 16); // red
+	result |= (uint32_t)(_mm_extract_epi32(dest_color, 1) <<  8); // green
+	result |= (uint32_t)(_mm_extract_epi32(dest_color, 0) <<  0); // blue
+
 	return result;
-
-	/*
-	uint8_t a = (uint8_t)(src >> 24);
-	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
-	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
-	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
-
-	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
 }
 
 float swr_linear_to_srgb(float val) {
