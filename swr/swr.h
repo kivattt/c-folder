@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -54,6 +55,8 @@ struct swr_output {
 	int width;
 	int height;
 
+	int64_t last_draw_fps_call_time_ns;
+
 	struct swr_font default_font;
 	int32_t last_default_font_size;
 };
@@ -82,6 +85,7 @@ struct swr_float_rect {
 
 	// Drawing functions
 	void swr_draw_fill(struct swr_output *swr, uint32_t color);
+	void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y);
 	struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 	struct swr_rect swr_draw_text_ex(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
 
@@ -199,6 +203,20 @@ void swr_draw_fill(struct swr_output *swr, uint32_t color) {
 	for (int i = 0; i < swr->width * swr->height; i += 4) {
 		_mm512_storeu_si512(swr->dest + i, src);
 	}*/
+}
+
+void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	long long now = ((long long)ts.tv_sec * 1000000000LL) + ts.tv_nsec;
+	long long diff = now - swr->last_draw_fps_call_time_ns;
+	swr->last_draw_fps_call_time_ns = now;
+	float diff_seconds = (float)diff / 1000000000.0F;
+
+	float fps = 1.0F / diff_seconds;
+	char fpsText[32];
+	snprintf(fpsText, 32, "%f fps", fps);
+	swr_draw_text(swr, fpsText, size, color, x, y);
 }
 
 struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y) {
