@@ -12,7 +12,10 @@ double time_sec() {
 }
 
 int main() {
-	// Font bitmap functions
+	int n_times;
+	double start, duration;
+
+	// swr_fontbmp_generate_from_memory()
 	struct swr_font font = swr_fontbmp_initialize();
 	int fd = open("Inter-Regular.ttf", O_RDONLY);
 	struct stat st;
@@ -20,18 +23,28 @@ int main() {
 	size_t font_data_size = (size_t)st.st_size;
 	unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
 
-	double start = time_sec();
-	int n_times = 100;
+	start = time_sec();
+	n_times = 10;
 	for (int i = 0; i < n_times; i++) {
 		swr_fontbmp_generate_from_memory(&font, font_data, font_data_size, 22);
 	}
-	double duration = time_sec() - start;
+	duration = time_sec() - start;
 	printf("swr_fontbmp_generate_from_memory %i times: %fs\n", n_times, duration);
 
 	close(fd);
 	munmap(font_data, font_data_size);
 	swr_fontbmp_deinitialize(font);
 
-	// ...
-	
+	// swr_alpha_blend()
+	start = time_sec();
+	n_times = 100000000;
+	uint32_t dest = 0xF0F0F0F0;
+	volatile uint32_t result; // To prevent dead code elimination
+	for (int i = 0; i < n_times; i++) {
+		uint8_t mod = i & 0xFF;
+		uint32_t src = mod << 24 | mod << 16 | mod << 8 | mod;
+		result = swr_alpha_blend(dest, src);
+	}
+	duration = time_sec() - start;
+	printf("swr_alpha_blend %i times: %fs\n", n_times, duration);
 }
