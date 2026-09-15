@@ -17,7 +17,7 @@ int main() {
 	double start, duration;
 
 	// swr_fontbmp_generate_from_memory()
-	{
+	if (0) {
 		int font_size = 22;
 		struct swr_font font = swr_fontbmp_initialize();
 		int fd = open("Inter-Regular.ttf", O_RDONLY);
@@ -38,7 +38,7 @@ int main() {
 	}
 
 	// swr_alpha_blend()
-	{
+	if (0) {
 		n_times = 100000000;
 		uint32_t dest = 0xF0F0F0F0;
 		volatile uint32_t result; // To prevent dead code elimination
@@ -54,7 +54,7 @@ int main() {
 	}
 
 	// swr_linear_to_srgb()
-	{
+	if (0) {
 		n_times = 100000000;
 		volatile float result; // To prevent dead code elimination
 		start = time_millis();
@@ -66,8 +66,21 @@ int main() {
 		printf("\x1b[1;30mswr_linear_to_srgb %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
 	}
 
+	// swr_linear_to_srgb2()
+	if (0) {
+		n_times = 100000000;
+		volatile uint8_t result; // To prevent dead code elimination
+		start = time_millis();
+		for (int i = 0; i < n_times; i++) {
+			result = swr_linear_to_srgb2(59 /* random value */);
+		}
+		result += 1; // To prevent -Wunused-but-set-variable warning
+		duration = time_millis() - start;
+		printf("\x1b[1;30mswr_linear_to_srgb2 %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
+	}
+
 	// swr_draw_fill()
-	{
+	if (1) {
 		n_times = 100;
 		int width = 3840;
 		int height = 2160;
@@ -92,7 +105,7 @@ int main() {
 	}
 
 	// swr_abgr_to_argb()
-	{
+	if (0) {
 		n_times = 100000000;
 		volatile uint32_t abgr = 0x10203040; // To prevent dead code elimination
 		volatile uint32_t result; // To prevent dead code elimination
@@ -106,7 +119,7 @@ int main() {
 	}
 
 	// swr_argb_to_float_alpha()
-	{
+	if (0) {
 		n_times = 100000000;
 		volatile uint32_t argb = 0x10203040; // To prevent dead code elimination
 		volatile float result; // To prevent dead code elimination
@@ -120,7 +133,7 @@ int main() {
 	}
 
 	// swr_float_alpha_to_argb()
-	{
+	if (0) {
 		n_times = 100000000;
 		volatile float alpha = 0.12379824F; // To prevent dead code elimination
 		volatile uint32_t result; // To prevent dead code elimination

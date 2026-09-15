@@ -79,6 +79,7 @@ struct swr_float_rect {
 	uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	float swr_linear_to_srgb(float val);
+	uint8_t swr_linear_to_srgb2(uint8_t val);
 	uint32_t swr_abgr_to_argb(uint32_t abgr);
 	float swr_argb_to_float_alpha(uint32_t argb);
 	uint32_t swr_float_alpha_to_argb(float alpha);
@@ -205,10 +206,14 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 }
 
 float swr_linear_to_srgb(float val) {
+	return (float)pow(val, 1.0 / 1.5);
+}
+
+uint8_t swr_linear_to_srgb2(uint8_t val) {
 	// For some reason, "gamma 2.2" actually means gamma 1.5.
 	// Fuck you. That's why
 	// source: my eyes
-	return (float)pow(val, 1.0 / 1.5);
+	return (uint8_t)(255.0F * pow((float)val / 255.0F, 1.0 / 1.5));
 }
 
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
@@ -223,23 +228,53 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 	return (uint32_t)((uint8_t)(alpha * 255.0) << 24);
 }
 
-void swr_draw_fill(struct swr_output *swr, uint32_t color) {
+void swr_draw_fill(struct swr_output *restrict swr, uint32_t color) {
 	swr__crash_if_null(swr);
 
-	int size = swr->width * swr->height;
+	/*int size = swr->width * swr->height;
 	for (int i = 0; i < size; i++) {
+		swr->dest[i] = color;
+	}*/
+
+	/*int size = swr->width * swr->height;
+	int remainder = (uintptr_t)swr->dest % 64;
+	for (int i = 0; i < size && i < remainder; i++) {
 		swr->dest[i] = color;
 	}
 
+	for (int i = remainder; i < size - remainder; i += 16) {
+		swr->dest[i+0] = color;
+		swr->dest[i+1] = color;
+		swr->dest[i+2] = color;
+		swr->dest[i+3] = color;
+		swr->dest[i+4] = color;
+		swr->dest[i+5] = color;
+		swr->dest[i+6] = color;
+		swr->dest[i+7] = color;
+		swr->dest[i+8] = color;
+		swr->dest[i+9] = color;
+		swr->dest[i+10] = color;
+		swr->dest[i+11] = color;
+		swr->dest[i+12] = color;
+		swr->dest[i+13] = color;
+		swr->dest[i+14] = color;
+		swr->dest[i+15] = color;
+	}
+
+	for (int i = size - remainder; i < size; i++) {
+		swr->dest[i] = color;
+	}*/
+
 	// 5 - 6 ms
-/*#define N 4096
+
+#define N 4096
 
 	uint32_t src[N];
 	for (int i = 0; i < N; i++) src[i] = color;
 
 	for (int i = 0; i < swr->width * swr->height; i += N) {
 		memcpy(swr->dest + i, &src, sizeof(uint32_t) * N);
-	}*/
+	}
 
 	// 13 ms
 	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
@@ -513,6 +548,7 @@ int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_
 
 			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
 
+			//uint8_t alpha = (uint8_t)((swr_linear_to_srgb(img.bitmap_data[img_index]) * (uint8_t)(color >> 24)) >> 8);
 			uint8_t alpha = (uint8_t)(swr_linear_to_srgb(img.bitmap_data[img_index] / 255.0F) * (float)(color >> 24));
 			uint32_t img_color = (uint32_t)(swr_alpha_blend(swr->dest[buffer_index], (uint32_t)(alpha << 24) | (color & 0x00FFFFFF)));
 

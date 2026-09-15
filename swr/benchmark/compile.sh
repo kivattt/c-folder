@@ -1,2 +1,2 @@
 CC="${CC:-gcc}"
-$CC -Wall -Wextra -Wconversion -O3 -march=native benchmark.c -o benchmark $(pkg-config --cflags freetype2) -lfreetype -lm
+$CC -g -gdwarf-4 -Wall -Wextra -Wconversion -O3 -march=native benchmark.c -o benchmark $(pkg-config --cflags freetype2) -lfreetype -lm
