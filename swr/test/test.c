@@ -102,6 +102,18 @@ int test_swr_alpha_blend() {
 		return 1;
 	}
 
+	dest = 0xFFFFFFFF;
+	src = 0xAAAAAAAA;
+	expected = 0xFFC6C6C6;
+	result = swr_alpha_blend(dest, src);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %x\n", expected);
+		printf("But got : %x\n", result);
+		return 1;
+	}
+
 	print_green(" Success\n");
 	return 0;
 }
