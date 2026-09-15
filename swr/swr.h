@@ -231,50 +231,21 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 void swr_draw_fill(struct swr_output *restrict swr, uint32_t color) {
 	swr__crash_if_null(swr);
 
-	/*int size = swr->width * swr->height;
+	// Best on my desktop
+	int size = swr->width * swr->height;
 	for (int i = 0; i < size; i++) {
 		swr->dest[i] = color;
-	}*/
-
-	/*int size = swr->width * swr->height;
-	int remainder = (uintptr_t)swr->dest % 64;
-	for (int i = 0; i < size && i < remainder; i++) {
-		swr->dest[i] = color;
 	}
 
-	for (int i = remainder; i < size - remainder; i += 16) {
-		swr->dest[i+0] = color;
-		swr->dest[i+1] = color;
-		swr->dest[i+2] = color;
-		swr->dest[i+3] = color;
-		swr->dest[i+4] = color;
-		swr->dest[i+5] = color;
-		swr->dest[i+6] = color;
-		swr->dest[i+7] = color;
-		swr->dest[i+8] = color;
-		swr->dest[i+9] = color;
-		swr->dest[i+10] = color;
-		swr->dest[i+11] = color;
-		swr->dest[i+12] = color;
-		swr->dest[i+13] = color;
-		swr->dest[i+14] = color;
-		swr->dest[i+15] = color;
-	}
-
-	for (int i = size - remainder; i < size; i++) {
-		swr->dest[i] = color;
-	}*/
-
-	// 5 - 6 ms
-
-#define N 4096
+	// Best on my laptop
+/*#define N 4096
 
 	uint32_t src[N];
 	for (int i = 0; i < N; i++) src[i] = color;
 
 	for (int i = 0; i < swr->width * swr->height; i += N) {
 		memcpy(swr->dest + i, &src, sizeof(uint32_t) * N);
-	}
+	}*/
 
 	// 13 ms
 	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
