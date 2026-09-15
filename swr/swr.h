@@ -136,7 +136,7 @@ void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int heigh
 }
 
 uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-	return a << 24 | r << 16 | g << 8 | b;
+	return (uint32_t)(a << 24 | r << 16 | g << 8 | b);
 }
 
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
@@ -157,7 +157,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
 	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
 
-	return 0xFF000000 | r << 16 | g << 8 | b;
+	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
 }
 
 float swr_linear_to_srgb(float val) {
@@ -176,7 +176,7 @@ float swr_argb_to_float_alpha(uint32_t argb) {
 }
 
 uint32_t swr_float_alpha_to_argb(float alpha) {
-	return (uint8_t)(alpha * 255.0) << 24;
+	return (uint8_t)((uint8_t)(alpha * 255.0) << 24);
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
@@ -288,7 +288,7 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 
 	FT_Library library;
 	FT_Error error = 0;
-	FT_Face face;
+	FT_Face face = NULL;
 
 	/* Initialize freetype2 */
 	error = FT_Init_FreeType(&library);
@@ -470,7 +470,7 @@ int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_
 			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
 
 			uint8_t alpha = (uint8_t)(swr_linear_to_srgb(img.bitmap_data[img_index] / 255.0F) * (float)(color >> 24));
-			uint32_t img_color = (uint32_t)(swr_alpha_blend(swr->dest[buffer_index], alpha << 24 | (color & 0x00FFFFFF)));
+			uint32_t img_color = (uint32_t)(swr_alpha_blend(swr->dest[buffer_index], (uint32_t)(alpha << 24) | (color & 0x00FFFFFF)));
 
 			// Set the pixel
 			swr->dest[buffer_index] = img_color;
