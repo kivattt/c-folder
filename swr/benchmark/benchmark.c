@@ -104,6 +104,34 @@ int main() {
 		}
 		result += 1; // To prevent -Wunused-but-set-variable warning
 		duration = time_millis() - start;
-		printf("\x1b[1;30mswr_abgr_to_argb() %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
+		printf("\x1b[1;30mswr_abgr_to_argb()        %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
+	}
+
+	// swr_argb_to_float_alpha()
+	{
+		n_times = 100000000;
+		volatile uint32_t argb = 0x10203040; // To prevent dead code elimination
+		volatile float result; // To prevent dead code elimination
+		start = time_millis();
+		for (int i = 0; i < n_times; i++) {
+			result = swr_argb_to_float_alpha(argb);
+		}
+		result += 1.0F; // To prevent -Wunused-but-set-variable warning
+		duration = time_millis() - start;
+		printf("\x1b[1;30mswr_argb_to_float_alpha() %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
+	}
+
+	// swr_float_alpha_to_argb()
+	{
+		n_times = 100000000;
+		volatile float alpha = 0.12379824F; // To prevent dead code elimination
+		volatile uint32_t result; // To prevent dead code elimination
+		start = time_millis();
+		for (int i = 0; i < n_times; i++) {
+			result = swr_float_alpha_to_argb(alpha);
+		}
+		result += 1; // To prevent -Wunused-but-set-variable warning
+		duration = time_millis() - start;
+		printf("\x1b[1;30mswr_float_alpha_to_argb() %i times:\x1b[0m %f ms [avg: %f ms]\n", n_times, duration, duration / (double)n_times);
 	}
 }
