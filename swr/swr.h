@@ -176,7 +176,7 @@ float swr_argb_to_float_alpha(uint32_t argb) {
 }
 
 uint32_t swr_float_alpha_to_argb(float alpha) {
-	return (uint8_t)((uint8_t)(alpha * 255.0) << 24);
+	return (uint32_t)((uint8_t)(alpha * 255.0) << 24);
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
