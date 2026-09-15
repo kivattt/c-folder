@@ -159,6 +159,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
 
+	// Best on my laptop
 	/* On benchmark (desktop): gcc: 367ms clang: 182ms */
 	/* On benchmark (laptop): gcc: 318ms clang: 154ms */
 	/*uint8_t a = (uint8_t)(src >> 24);
@@ -168,6 +169,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
 
+	// Best on my desktop
 	/* On benchmark (desktop): gcc: 257ms clang: 165ms */
 	/* On benchmark (laptop): gcc: 328ms clang: 241ms */
 	short int src_r = (src >> 16) & 0xFF;
@@ -238,14 +240,14 @@ void swr_draw_fill(struct swr_output *restrict swr, uint32_t color) {
 	}
 
 	// Best on my laptop
-/*#define N 4096
+/*#define SWR_N 4096
+	uint32_t src[SWR_N];
+	for (int i = 0; i < SWR_N; i++) src[i] = color;
 
-	uint32_t src[N];
-	for (int i = 0; i < N; i++) src[i] = color;
-
-	for (int i = 0; i < swr->width * swr->height; i += N) {
-		memcpy(swr->dest + i, &src, sizeof(uint32_t) * N);
-	}*/
+	for (int i = 0; i < swr->width * swr->height; i += SWR_N) {
+		memcpy(swr->dest + i, &src, sizeof(uint32_t) * SWR_N);
+	}
+#undef SWR_N*/
 
 	// 13 ms
 	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
