@@ -151,9 +151,14 @@ int main() {
 		swr_draw_fill(&r, swr_rgb(18, 18, 20));
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
 
-		for (int i = 0; i < 30; i++) {
-			swr_draw_text(&r, "hello, world! i'm really excited to be videogaming. nonbinary spongebob military garfunkel", 22, swr_rgb(255,255,255), 0, 40 + i * 22);
-		}
+		swr_draw_text(&r, "Hello, world from swr!", 22, swr_rgb(255,255,255), 0, 60);
+		struct swr_rect rect = {
+			.x = 100,
+			.y = 60,
+			.w = 100,
+			.h = 100,
+		};
+		swr_draw_rectangle(&r, rect, swr_rgba(0, 255, 0, 100));
 
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);

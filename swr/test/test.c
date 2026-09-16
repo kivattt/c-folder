@@ -90,10 +90,24 @@ int test_swr_abgr_to_argb() {
 }
 
 int test_swr_alpha_blend() {
-	uint32_t dest     = 0xFF000000;
-	uint32_t src      = 0xAAFFFFFF;
-	uint32_t expected = 0xFFAAAAAA;
-	uint32_t result = swr_alpha_blend(dest, src);
+	uint32_t dest, src, expected, result;
+
+	dest = 0xFFFFFFFF;
+	src = 0xAA00FF00;
+	expected = 0xFF55FF55;
+	result = swr_alpha_blend(dest, src);
+	if (result != expected) {
+		print_red(" Failed\n");
+
+		printf("Expected: %x\n", expected);
+		printf("But got : %x\n", result);
+		return 1;
+	}
+
+	dest     = 0xFF000000;
+	src      = 0xAAFFFFFF;
+	expected = 0xFFAAAAAA;
+	result = swr_alpha_blend(dest, src);
 	if (result != expected) {
 		print_red(" Failed\n");
 
@@ -113,6 +127,7 @@ int test_swr_alpha_blend() {
 		printf("But got : %x\n", result);
 		return 1;
 	}
+
 
 	print_green(" Success\n");
 	return 0;

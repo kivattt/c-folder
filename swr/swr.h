@@ -89,6 +89,7 @@ struct swr_float_rect {
 	void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y);
 	struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 	struct swr_rect swr_draw_text_ex(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
+	void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t color);
 
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
@@ -170,7 +171,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
 
 	// Best on my desktop
-	/* On benchmark (desktop): gcc: 257ms clang: 165ms */
+	/* On benchmark (desktop): gcc: 262ms clang: 208ms */
 	/* On benchmark (laptop): gcc: 328ms clang: 241ms */
 	short int src_r = (src >> 16) & 0xFF;
 	short int src_g = (src >>  8) & 0xFF;
@@ -188,16 +189,15 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	// src *= alpha
 	src_color = _mm_mullo_epi16(src_color, alpha);
-	// dest *= 1.0 - alpha
+	// dest *= 255 - alpha
 	dest_color = _mm_mullo_epi16(dest_color, one_minus_alpha);
-
 	// dest += src
 	dest_color = _mm_add_epi16(dest_color, src_color);
-
 	// dest /= 255
 	dest_color = _mm_add_epi16(dest_color, _mm_set1_epi16(511)); // 256*256 - 255*255
 	dest_color = _mm_srli_epi16(dest_color, 8);
 	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
+	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF)); // Clamp to 0xFF
 
 	uint32_t result = 0xFF000000;
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 2)) << 16; // red
@@ -289,6 +289,27 @@ struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t 
 
 struct swr_rect swr_draw_text_ex(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y) {
 	return swr__draw_text_impl(swr, text, font, color, x, y, 1 /* Yes, draw to the screen */);
+}
+
+void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t color) {
+	swr__crash_if_null(swr);
+
+	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+
+	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
+	int x_offset = SWR_MAX(0, rect.x);
+	int y_offset = SWR_MAX(0, rect.y);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+
+			int dest_index = out_y * swr->width + out_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
 }
 
 struct swr_font swr_fontbmp_initialize() {
