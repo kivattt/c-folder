@@ -197,7 +197,8 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest_color = _mm_add_epi16(dest_color, _mm_set1_epi16(511)); // 256*256 - 255*255
 	dest_color = _mm_srli_epi16(dest_color, 8);
 	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
-	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF)); // Clamp to 0xFF
+	// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF));
 
 	uint32_t result = 0xFF000000;
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 2)) << 16; // red
