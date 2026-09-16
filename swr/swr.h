@@ -91,6 +91,7 @@ struct swr_float_rect {
 	struct swr_rect swr_draw_text_ex(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
 	void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t color);
 	void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius);
+	void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
@@ -105,6 +106,7 @@ struct swr_float_rect {
 	int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_t color, int img_x, int img_y);
 	struct swr_rect swr__draw_text_impl(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y, int actually_draw);
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
+	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -337,6 +339,48 @@ void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, ui
 
 			// Gamma correction with swr_linear_to_srgb
 			float alpha = color_alpha * swr_linear_to_srgb(swr__sdf_rect((float)sample_x, (float)sample_y, float_rect, radius));
+			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
+
+			int dest_index = sample_y * swr->width + sample_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], the_color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+}
+
+void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward) {
+	swr__crash_if_null(swr);
+
+	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+
+	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
+
+	// Need some extra space if the thickness extends outward
+	int grow = (int)ceil(thickness_outward);
+	visible.x -= grow;
+	visible.y -= grow;
+	visible.w += 2 * grow;
+	visible.h += 2 * grow;
+	visible = swr_rect_intersect(visible, buffer_rect);
+
+	int x_offset = SWR_MAX(0, rect.x - grow);
+	int y_offset = SWR_MAX(0, rect.y - grow);
+
+	struct swr_float_rect float_rect = {
+		.x = (float)rect.x,
+		.y = (float)rect.y,
+		.w = (float)rect.w,
+		.h = (float)rect.h,
+	};
+	float color_alpha = swr_argb_to_float_alpha(color);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int sample_x = x + x_offset;
+			int sample_y = y + y_offset;
+
+			// Gamma correction with swr_linear_to_srgb
+			float alpha = color_alpha * swr_linear_to_srgb(swr__sdf_rect_outline((float)sample_x, (float)sample_y, float_rect, radius, thickness_inward, thickness_outward));
 			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
 
 			int dest_index = sample_y * swr->width + sample_x;
@@ -663,6 +707,26 @@ float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius) 
 	float q_y_positive = SWR_MAX(0.0F, q_y);
 
 	float result = SWR_MIN(0.0F, SWR_MAX(q_x, q_y)) + (float)sqrt(q_x_positive*q_x_positive + q_y_positive*q_y_positive) - radius;
+	return 1.0F - SWR_MAX(0.0F, SWR_MIN(1.0F, result));
+}
+
+float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward) {
+	rect.w -= 1.0F;
+	rect.h -= 1.0F;
+
+	x -= rect.x + rect.w / 2.0F;
+	y -= rect.y + rect.h / 2.0F;
+
+	float q_x = (float)fabs(x) - rect.w / 2.0F + radius;
+	float q_y = (float)fabs(y) - rect.h / 2.0F + radius;
+	float q_x_positive = SWR_MAX(0.0F, q_x);
+	float q_y_positive = SWR_MAX(0.0F, q_y);
+
+	float result = SWR_MIN(0.0F, SWR_MAX(q_x, q_y)) + (float)sqrt(q_x_positive*q_x_positive + q_y_positive*q_y_positive) - radius;
+
+	float t_in = thickness_inward / 2.0F;
+	float t_out = thickness_outward / 2.0F;
+	result = SWR_MAX(0.0F, (float)fabs(result - t_out + t_in) - t_out - t_in);
 	return 1.0F - SWR_MAX(0.0F, SWR_MIN(1.0F, result));
 }
 /* END OF PRIVATE FUNCTIONS IMPLEMENTATIONS */

@@ -168,6 +168,9 @@ int main() {
 		};
 		swr_draw_rectangle_rounded(&r, rect, swr_rgba(255, 255, 255, 100), 10.0F);
 
+		rect.y += 130;
+		swr_draw_rectangle_rounded_outline(&r, rect, swr_rgba(255, 0, 255, 255), 10.0F, 5.0F, 5.0F);
+
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
 		XFlush(dpy);
