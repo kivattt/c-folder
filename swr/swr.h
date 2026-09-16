@@ -239,7 +239,7 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 	return (uint32_t)((uint8_t)(alpha * 255.0) << 24);
 }
 
-void swr_draw_fill(struct swr_output *restrict swr, uint32_t color) {
+void swr_draw_fill(struct swr_output *swr, uint32_t color) {
 	swr__crash_if_null(swr);
 
 #ifdef SWR_ON_LAPTOP
