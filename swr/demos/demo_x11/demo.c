@@ -111,7 +111,7 @@ int main() {
 
 	Window window = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), 100, 100, width, height, 0, 0, 0);
 	XStoreName(dpy, window, "swr software rendering on X11 shared memory");
-	XSelectInput(dpy, window, ExposureMask | StructureNotifyMask | KeyPressMask);
+	XSelectInput(dpy, window, ExposureMask | StructureNotifyMask | KeyPressMask | PointerMotionMask);
 	Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 	XSetWMProtocols(dpy, window, &wm_delete, 1);
 
@@ -128,11 +128,16 @@ int main() {
 
 	bool running = true;
 
+	int mouse_x = 0;
+
 	while (running) {
 		while (XPending(dpy)) {
 			XEvent e;
 			XNextEvent(dpy, &e);
 			switch (e.type) {
+				case MotionNotify:
+					mouse_x = e.xmotion.x;
+					break;
 				case ClientMessage:
 					if ((Atom)e.xclient.data.l[0] == wm_delete) {
 						running = false;
@@ -169,7 +174,10 @@ int main() {
 		swr_draw_rectangle_rounded(&r, rect, swr_rgba(255, 255, 255, 100), 10.0F);
 
 		rect.y += 130;
-		swr_draw_rectangle_rounded_outline(&r, rect, swr_rgba(255, 0, 255, 255), 10.0F, 5.0F, 5.0F);
+		float round = (float)SWR_MAX(0.0F, ((float)mouse_x - 150.0F) / 8.0F);
+		printf("%f\n", round);
+
+		swr_draw_rectangle_rounded_outline(&r, rect, swr_rgba(255, 255, 255, 100), round, 0.0F, 0.0F);
 
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
