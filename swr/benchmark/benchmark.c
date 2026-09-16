@@ -80,7 +80,7 @@ int main() {
 	}
 
 	// swr_draw_fill()
-	if (1) {
+	if (0) { // Broken benchmark, hidden for now
 		n_times = 100;
 		int width = 3840;
 		int height = 2160;

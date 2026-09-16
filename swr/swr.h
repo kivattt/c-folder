@@ -1,10 +1,6 @@
 #ifndef SWR_H
 #define SWR_H
 
-// Some function implementations run faster on my laptop compared to my desktop.
-// This #define switches them out to run faster on my laptop.
-//#define SWR_ON_LAPTOP
-
 #include <assert.h>
 #include <fcntl.h>
 #include <immintrin.h> // Provides _rotr()
@@ -166,18 +162,6 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
 
-#ifdef SWR_ON_LAPTOP
-	// Best on my laptop
-	/* On benchmark (desktop): gcc: 367ms clang: 182ms */
-	/* On benchmark (laptop): gcc: 318ms clang: 154ms */
-	uint8_t a = (uint8_t)(src >> 24);
-	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
-	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
-	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
-
-	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
-#else
-	// Best on my desktop
 	/* On benchmark (desktop): gcc: 262ms clang: 208ms */
 	/* On benchmark (laptop): gcc: 328ms clang: 241ms */
 	short int src_r = (src >> 16) & 0xFF;
@@ -213,7 +197,6 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 0)) <<  0; // blue
 
 	return result;
-#endif // SWR_ON_LAPTOP
 }
 
 float swr_linear_to_srgb(float val) {
@@ -242,23 +225,37 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
 	swr__crash_if_null(swr);
 
-#ifdef SWR_ON_LAPTOP
-	// Best on my laptop
-	#define SWR_N 4096
-	uint32_t src[SWR_N];
-	for (int i = 0; i < SWR_N; i++) src[i] = color;
-
-	for (int i = 0; i < swr->width * swr->height; i += SWR_N) {
-		memcpy(swr->dest + i, &src, sizeof(uint32_t) * SWR_N);
-	}
-	#undef SWR_N
-#else
-	// Best on my desktop
+	// Benchmark (laptop) gcc: 353ms, clang: 353ms
+	// Benchmark (laptop, demo_x11) gcc: 1200-1300 fps, clang: 1000-1200 fps
 	int size = swr->width * swr->height;
 	for (int i = 0; i < size; i++) {
 		swr->dest[i] = color;
 	}
-#endif // SWR_ON_LAPTOP
+
+	// Same speed in fps as the basic for loop above on my laptop.
+	/*int size = swr->width * swr->height;
+	uint32_t* start = swr->dest;
+	uint32_t* end = start + size;
+	uint32_t* restrict ptr = start;
+
+	for(; ptr < end && ((size_t)ptr % 64) != 0; ptr++) {
+		*ptr = color;
+	}
+
+	//uint32_t* aligned_end = (uint32_t*)((uintptr_t)end & ~31ull);
+	uint32_t* aligned_end = (uint32_t*)((uintptr_t)end & ~63ull);
+	//__m256i vcolor = _mm256_set1_epi32((int)color);
+	__m512i vcolor = _mm512_set1_epi32((int)color);
+
+	//for (; ptr < aligned_end; ptr += 8) {
+		//_mm256_store_si256((__m256i*)ptr, vcolor);
+	for (; ptr < aligned_end; ptr += 16) {
+		_mm512_store_si512((__m512i*)ptr, vcolor);
+	}
+
+	for(; ptr < end; ptr++) {
+		*ptr = color;
+	}*/
 }
 
 void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y) {
