@@ -1,6 +1,10 @@
 #ifndef SWR_H
 #define SWR_H
 
+// Some function implementations run faster on my laptop compared to my desktop.
+// This #define switches them out to run faster on my laptop.
+//#define SWR_ON_LAPTOP
+
 #include <assert.h>
 #include <fcntl.h>
 #include <immintrin.h> // Provides _rotr()
@@ -90,6 +94,7 @@ struct swr_float_rect {
 	struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Draw text using the default font. It regenerates the font bitmaps when size changed since the last call. (Slow!)
 	struct swr_rect swr_draw_text_ex(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y); // Returns bounding box width and height, along with x and y offset relative to the input x y arguments.
 	void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t color);
+	void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius);
 
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
@@ -103,6 +108,7 @@ struct swr_float_rect {
 	struct swr_rect swr_rect_intersect(struct swr_rect a, struct swr_rect b);
 	int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_t color, int img_x, int img_y);
 	struct swr_rect swr__draw_text_impl(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y, int actually_draw);
+	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -160,16 +166,17 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
 
+#ifdef SWR_ON_LAPTOP
 	// Best on my laptop
 	/* On benchmark (desktop): gcc: 367ms clang: 182ms */
 	/* On benchmark (laptop): gcc: 318ms clang: 154ms */
-	/*uint8_t a = (uint8_t)(src >> 24);
+	uint8_t a = (uint8_t)(src >> 24);
 	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
 	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
 	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
 
-	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);*/
-
+	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
+#else
 	// Best on my desktop
 	/* On benchmark (desktop): gcc: 262ms clang: 208ms */
 	/* On benchmark (laptop): gcc: 328ms clang: 241ms */
@@ -206,6 +213,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 0)) <<  0; // blue
 
 	return result;
+#endif // SWR_ON_LAPTOP
 }
 
 float swr_linear_to_srgb(float val) {
@@ -234,28 +242,23 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 void swr_draw_fill(struct swr_output *restrict swr, uint32_t color) {
 	swr__crash_if_null(swr);
 
-	// Best on my desktop
-	int size = swr->width * swr->height;
-	for (int i = 0; i < size; i++) {
-		swr->dest[i] = color;
-	}
-
+#ifdef SWR_ON_LAPTOP
 	// Best on my laptop
-/*#define SWR_N 4096
+	#define SWR_N 4096
 	uint32_t src[SWR_N];
 	for (int i = 0; i < SWR_N; i++) src[i] = color;
 
 	for (int i = 0; i < swr->width * swr->height; i += SWR_N) {
 		memcpy(swr->dest + i, &src, sizeof(uint32_t) * SWR_N);
 	}
-#undef SWR_N*/
-
-	// 13 ms
-	/*__m512i src = _mm512_set4_epi32(color, color, color, color);
-
-	for (int i = 0; i < swr->width * swr->height; i += 4) {
-		_mm512_storeu_si512(swr->dest + i, src);
-	}*/
+	#undef SWR_N
+#else
+	// Best on my desktop
+	int size = swr->width * swr->height;
+	for (int i = 0; i < size; i++) {
+		swr->dest[i] = color;
+	}
+#endif // SWR_ON_LAPTOP
 }
 
 void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y) {
@@ -308,6 +311,39 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 
 			int dest_index = out_y * swr->width + out_x;
 			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+}
+
+void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius) {
+	swr__crash_if_null(swr);
+
+	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+
+	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
+	int x_offset = SWR_MAX(0, rect.x);
+	int y_offset = SWR_MAX(0, rect.y);
+
+	struct swr_float_rect float_rect = {
+		.x = (float)rect.x,
+		.y = (float)rect.y,
+		.w = (float)rect.w,
+		.h = (float)rect.h,
+	};
+	float color_alpha = swr_argb_to_float_alpha(color);
+
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int sample_x = x + x_offset;
+			int sample_y = y + y_offset;
+
+			// Gamma correction with swr_linear_to_srgb
+			float alpha = color_alpha * swr_linear_to_srgb(swr__sdf_rect((float)sample_x, (float)sample_y, float_rect, radius));
+			uint32_t the_color = swr_float_alpha_to_argb(alpha) | (color & 0x00FFFFFF);
+
+			int dest_index = sample_y * swr->width + sample_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], the_color);
 			swr->dest[dest_index] = output_color;
 		}
 	}
@@ -615,6 +651,22 @@ struct swr_rect swr__draw_text_impl(struct swr_output *swr, const char *text, st
 	bounding_box.x -= x;
 	bounding_box.y -= y;
 	return bounding_box;
+}
+
+float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius) {
+	rect.w -= 1.0F;
+	rect.h -= 1.0F;
+
+	x -= rect.x + rect.w / 2.0F;
+	y -= rect.y + rect.h / 2.0F;
+
+	float q_x = (float)fabs(x) - rect.w / 2.0F + radius;
+	float q_y = (float)fabs(y) - rect.h / 2.0F + radius;
+	float q_x_positive = SWR_MAX(0.0F, q_x);
+	float q_y_positive = SWR_MAX(0.0F, q_y);
+
+	float result = SWR_MIN(0.0F, SWR_MAX(q_x, q_y)) + (float)sqrt(q_x_positive*q_x_positive + q_y_positive*q_y_positive) - radius;
+	return 1.0F - SWR_MAX(0.0F, SWR_MIN(1.0F, result));
 }
 /* END OF PRIVATE FUNCTIONS IMPLEMENTATIONS */
 
