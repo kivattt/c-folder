@@ -154,7 +154,6 @@ int main() {
 
 		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
 		swr_draw_fill(&r, swr_rgb(18, 18, 20));
-		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
 
 		swr_draw_text(&r, "Hello, world from swr! Lorem ipsum", 22, swr_rgb(255,255,255), 0, 60);
 		struct swr_rect rect = {
@@ -175,10 +174,10 @@ int main() {
 
 		rect.y += 130;
 		float round = (float)SWR_MAX(0.0F, ((float)mouse_x - 150.0F) / 8.0F);
-		printf("%f\n", round);
 
 		swr_draw_rectangle_rounded_outline(&r, rect, swr_rgba(255, 255, 255, 100), round, 0.0F, 0.0F);
 
+		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
 		XFlush(dpy);

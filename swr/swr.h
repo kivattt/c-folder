@@ -16,6 +16,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#define SWR_FRAME_TIME_HISTORY_SIZE 256
+
 #ifdef __clang__
 	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
 #else
@@ -55,10 +57,13 @@ struct swr_output {
 	int width;
 	int height;
 
-	int64_t last_draw_fps_call_time_ns;
-
 	struct swr_font default_font;
 	int32_t last_default_font_size;
+
+	// Framerate tracking for swr_draw_fps()
+	int64_t last_draw_fps_call_time_ns;
+	float frame_time_history[SWR_FRAME_TIME_HISTORY_SIZE];
+	int frame_time_index;
 };
 
 struct swr_rect {
@@ -268,6 +273,47 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 	swr->last_draw_fps_call_time_ns = now;
 	float diff_seconds = (float)diff / 1000000000.0F;
 
+	swr->frame_time_history[swr->frame_time_index] = diff_seconds;
+	// Draw the frame history graph
+	{
+		//int x_offset = size * 10;
+		int x_offset = swr->width - SWR_FRAME_TIME_HISTORY_SIZE;
+		int y_offset = 0;
+		int height = 100;
+
+		// Black background
+		struct swr_rect background_rect = {
+			.x = x_offset,
+			.y = y_offset,
+			.w = SWR_FRAME_TIME_HISTORY_SIZE,
+			.h = height,
+		};
+		swr_draw_rectangle(swr, background_rect, swr_rgb(0,0,0));
+
+		// Find the max height to scale everything by
+		// FIXME: Use a lowpass-filter instead to avoid this loop...
+		float max_value = 0.0F;
+		for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
+			max_value = SWR_MAX(max_value, swr->frame_time_history[i]);
+		}
+
+		// Graph lines
+		for (int i = 1; i < 1 + SWR_FRAME_TIME_HISTORY_SIZE; i++) {
+			int index = (swr->frame_time_index + i) % SWR_FRAME_TIME_HISTORY_SIZE;
+			float time = swr->frame_time_history[index];
+
+			int time_height = (int)(time / max_value * (float)height);
+			struct swr_rect rect = {
+				.x = x_offset + i,
+				.y = y_offset + (height - time_height),
+				.w = 1,
+				.h = time_height,
+			};
+			swr_draw_rectangle(swr, rect, swr_rgb(255,255,255));
+		}
+	}
+	swr->frame_time_index = (swr->frame_time_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
+
 	float fps = 1.0F / diff_seconds;
 	char fpsText[32];
 	snprintf(fpsText, 32, "%f fps", fps);
@@ -354,6 +400,9 @@ void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect 
 	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
 
 	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
+
+	// Limit the radius so it doesn't look weird
+	radius = SWR_MIN(radius, (float)SWR_MIN(rect.w, rect.h) / 2.0F);
 
 	// Need some extra space if the thickness extends outward
 	int grow = (int)ceil(thickness_outward);
