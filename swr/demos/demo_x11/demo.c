@@ -177,6 +177,16 @@ int main() {
 
 		swr_draw_rectangle_rounded_outline(&r, rect, swr_rgba(255, 255, 255, 100), round, 0.0F, 0.0F);
 
+		for (int i = 0; i < 10; i++) {
+			rect = (struct swr_rect){
+				.x = 300 + i*100,
+				.y = 60,
+				.w = 80,
+				.h = 80,
+			};
+			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), 30.0F);
+		}
+
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);

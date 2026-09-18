@@ -16,7 +16,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#define SWR_FRAME_TIME_HISTORY_SIZE 256
+#define SWR_FRAME_TIME_HISTORY_SIZE 512
 
 #ifdef __clang__
 	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
@@ -63,7 +63,15 @@ struct swr_output {
 	// Framerate tracking for swr_draw_fps()
 	int64_t last_draw_fps_call_time_ns;
 	float frame_time_history[SWR_FRAME_TIME_HISTORY_SIZE];
-	int frame_time_index;
+	int frame_time_history_index;
+
+	// Peak detection
+	float history_peak;
+	int history_peak_counter;
+	float history_peak_after;
+	int history_peak_after_counter;
+
+	float graph_scale;
 };
 
 struct swr_rect {
@@ -98,6 +106,10 @@ struct swr_float_rect {
 	void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius);
 	void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 
+	// Text measurement functions
+	struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn. (Default font)
+	struct swr_rect swr_measure_text_ex(struct swr_output *swr, const char *text, struct swr_font *font_bitmaps, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn.
+
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
 	void swr_fontbmp_deinitialize(struct swr_font font);
@@ -112,6 +124,7 @@ struct swr_float_rect {
 	struct swr_rect swr__draw_text_impl(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y, int actually_draw);
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
+	float swr__lerp(float a, float b, float t);
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -270,49 +283,105 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	long long now = ((long long)ts.tv_sec * 1000000000LL) + ts.tv_nsec;
 	long long diff = now - swr->last_draw_fps_call_time_ns;
+	if (swr->last_draw_fps_call_time_ns == 0) {
+		diff = 0;
+	}
 	swr->last_draw_fps_call_time_ns = now;
 	float diff_seconds = (float)diff / 1000000000.0F;
 
-	swr->frame_time_history[swr->frame_time_index] = diff_seconds;
-	// Draw the frame history graph
+	swr->frame_time_history[swr->frame_time_history_index] = diff_seconds;
+
+	// Find peak value in swr->frame_time_history
+	// (This is a complicated alternative to a simple for loop)
+	if (diff_seconds > swr->history_peak) {
+		swr->history_peak_counter = 0;
+		swr->history_peak = diff_seconds;
+		swr->history_peak_after = 0.0F;
+	} else {
+		swr->history_peak_counter += 1;
+
+		if (diff_seconds > swr->history_peak_after) {
+			swr->history_peak_after = diff_seconds;
+			swr->history_peak_after_counter = 0;
+		} else {
+			swr->history_peak_after_counter += 1;
+		}
+
+		if (swr->history_peak_counter > SWR_FRAME_TIME_HISTORY_SIZE) {
+			swr->history_peak_counter = swr->history_peak_after_counter;
+			swr->history_peak = swr->history_peak_after;
+			swr->history_peak_after = 0.0F;
+		}
+	}
+
+	// Smoothly scale up swr->graph_scale when the peak reduces
+	if (swr->history_peak > swr->graph_scale) {
+		swr->graph_scale = swr->history_peak;
+	} else {
+		float settle_speed = 500.0F;
+		float peak_diff = (float)fabs(swr->history_peak - swr->graph_scale); // Large peaks will settle faster
+		swr->graph_scale = swr__lerp(swr->graph_scale, swr->history_peak, SWR_MIN(1.0F, settle_speed * peak_diff * diff_seconds));
+	}
+
+	// Draw graph of frame history
 	{
-		//int x_offset = size * 10;
 		int x_offset = swr->width - SWR_FRAME_TIME_HISTORY_SIZE;
 		int y_offset = 0;
-		int height = 100;
+		int height = SWR_MIN(swr->height, 100);
 
-		// Black background
+		// Draw background
 		struct swr_rect background_rect = {
 			.x = x_offset,
 			.y = y_offset,
 			.w = SWR_FRAME_TIME_HISTORY_SIZE,
 			.h = height,
 		};
-		swr_draw_rectangle(swr, background_rect, swr_rgb(0,0,0));
+		swr_draw_rectangle(swr, background_rect, swr_rgba(0,0,0,150));
 
-		// Find the max height to scale everything by
-		// FIXME: Use a lowpass-filter instead to avoid this loop...
-		float max_value = 0.0F;
-		for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
-			max_value = SWR_MAX(max_value, swr->frame_time_history[i]);
-		}
-
-		// Graph lines
+		// Draw lines in the graph
 		for (int i = 1; i < 1 + SWR_FRAME_TIME_HISTORY_SIZE; i++) {
-			int index = (swr->frame_time_index + i) % SWR_FRAME_TIME_HISTORY_SIZE;
+			int index = i - 1;
 			float time = swr->frame_time_history[index];
 
-			int time_height = (int)(time / max_value * (float)height);
+			int time_height = (int)(time / swr->graph_scale * (float)height);
 			struct swr_rect rect = {
-				.x = x_offset + i,
+				.x = x_offset + i - 1,
 				.y = y_offset + (height - time_height),
 				.w = 1,
-				.h = time_height,
+				.h = SWR_MAX(1, time_height),
 			};
-			swr_draw_rectangle(swr, rect, swr_rgb(255,255,255));
+
+			uint8_t alpha = 140;
+			int proximity = 20 - SWR_MIN(20, abs(index - swr->frame_time_history_index));
+			alpha += (uint8_t)(proximity * 8);
+
+			if (index > swr->frame_time_history_index) {
+				alpha = 30;
+			}
+
+			uint32_t rect_color = swr_rgba(255, 255, 255, alpha);
+			swr_draw_rectangle(swr, rect, rect_color);
 		}
+
+		// Draw peak line
+		int peak_height = (int)(swr->history_peak / swr->graph_scale * (float)height);
+		int peak_y = y_offset + (height - peak_height);
+		struct swr_rect rect = {
+			.x = x_offset,
+			.y = peak_y,
+			.w = SWR_FRAME_TIME_HISTORY_SIZE,
+			.h = 1,
+		};
+		swr_draw_rectangle(swr, rect, swr_rgba(255,0,0,255));
+
+		// Draw peak time in milliseconds
+		int text_y = peak_y;
+		char s[32];
+		snprintf(s, 32, "%.2fms", swr->history_peak * 1000.0F);
+		struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
+		swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w, text_y);
 	}
-	swr->frame_time_index = (swr->frame_time_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
+	swr->frame_time_history_index = (swr->frame_time_history_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
 
 	float fps = 1.0F / diff_seconds;
 	char fpsText[32];
@@ -437,6 +506,27 @@ void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect 
 			swr->dest[dest_index] = output_color;
 		}
 	}
+}
+
+struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y) {
+	// Unfortunately duplicated code from swr_draw_text() because we still need the resize logic...
+	swr__crash_if_null(swr);
+
+	if (size != swr->last_default_font_size) {
+		int err = swr_fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
+		if (err) {
+			printf("swr_draw_text: A call to swr_fontbmp_generate_from_memory errored with code %i\n", err);
+			assert(0);
+		}
+
+		swr->last_default_font_size = size;
+	}
+
+	return swr__draw_text_impl(swr, text, &swr->default_font, color /* Color doesn't matter */, x, y, 0 /* Don't draw anything */);
+}
+
+struct swr_rect swr_measure_text_ex(struct swr_output *swr, const char *text, struct swr_font *font_bitmaps, uint32_t color, int x, int y) {
+	return swr__draw_text_impl(swr, text, font_bitmaps, color /* Color doesn't matter */, x, y, 0 /* Don't draw anything */);
 }
 
 struct swr_font swr_fontbmp_initialize() {
@@ -777,6 +867,11 @@ float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float 
 	float t_out = thickness_outward / 2.0F;
 	result = SWR_MAX(0.0F, (float)fabs(result - t_out + t_in) - t_out - t_in);
 	return 1.0F - SWR_MAX(0.0F, SWR_MIN(1.0F, result));
+}
+
+// At t = 0.0, a is returned. At t = 1.0, b is returned.
+float swr__lerp(float a, float b, float t) {
+	return a * (1.0F - t) + b*t;
 }
 /* END OF PRIVATE FUNCTIONS IMPLEMENTATIONS */
 
