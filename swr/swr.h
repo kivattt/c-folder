@@ -121,6 +121,7 @@ struct swr_float_rect {
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 	float swr__lerp(float a, float b, float t);
+	void swr__print_128i(__m128i value);
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -206,6 +207,11 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
 	// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF));
+
+	// NOT FASTER:
+	/*uint32_t result = 0xFF000000;
+	int64_t lower_bits = _mm_cvtsi128_si64(dest_color);
+	result |= (uint32_t)(((lower_bits >> 16) & 0xFF0000) | ((lower_bits >> 8) & 0xFF00) | (lower_bits & 0xFF));*/
 
 	uint32_t result = 0xFF000000;
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 2)) << 16; // red
@@ -318,7 +324,7 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 			.w = SWR_FRAME_TIME_HISTORY_SIZE,
 			.h = height,
 		};
-		swr_draw_rectangle(swr, background_rect, swr_rgba(0,0,0,150));
+		swr_draw_rectangle(swr, background_rect, swr_rgba(0,0,0,200));
 
 		// Draw lines in the graph
 		for (int i = 1; i < 1 + SWR_FRAME_TIME_HISTORY_SIZE; i++) {
@@ -343,7 +349,8 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 		}
 
 		{
-			// Draw peak line
+			// Draw max line
+			uint32_t max_line_color = 0xFFF75959;
 			int peak_height = (int)(swr->history_max / swr->graph_scale * (float)height);
 			int peak_y = y_offset + (height - peak_height);
 			struct swr_rect rect = {
@@ -352,18 +359,20 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 				.w = SWR_FRAME_TIME_HISTORY_SIZE,
 				.h = 1,
 			};
-			swr_draw_rectangle(swr, rect, swr_rgba(255,0,0,255));
+			swr_draw_rectangle(swr, rect, max_line_color);
 
-			// Draw peak time in milliseconds
+			// Draw max time in milliseconds
 			int text_y = peak_y;
 			char s[32];
 			snprintf(s, 32, "%.2fms", swr->history_max * 1000.0F);
 			struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
-			swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w - 5, text_y);
+			swr_draw_text(swr, s, size, max_line_color, x_offset - measured.w - 5, text_y);
 		}
 
 		{
 			// Draw min line
+			//uint32_t min_line_color = 0xFF59A3F7;
+			uint32_t min_line_color = 0xFF166AC9;
 			int peak_height = (int)(swr->history_min / swr->graph_scale * (float)height);
 			int peak_y = y_offset + (height - peak_height);
 			struct swr_rect rect = {
@@ -372,14 +381,14 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 				.w = SWR_FRAME_TIME_HISTORY_SIZE,
 				.h = 1,
 			};
-			swr_draw_rectangle(swr, rect, swr_rgba(0,0,255,255));
+			swr_draw_rectangle(swr, rect, min_line_color);
 
 			// Draw min time in milliseconds
 			int text_y = peak_y;
 			char s[32];
 			snprintf(s, 32, "%.2fms", swr->history_min * 1000.0F);
 			struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
-			swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w - 5, text_y);
+			swr_draw_text(swr, s, size, min_line_color, x_offset - measured.w - 5, text_y);
 		}
 	}
 	swr->frame_time_history_index = (swr->frame_time_history_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
@@ -434,6 +443,14 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius) {
 	swr__crash_if_null(swr);
 
+	// Limit the radius so it doesn't look weird
+	radius = SWR_MIN(radius, (float)SWR_MIN(rect.w, rect.h) / 2.0F);
+
+	if (radius == 0.0F) {
+		swr_draw_rectangle(swr, rect, color);
+		return;
+	}
+
 	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
 
 	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
@@ -467,12 +484,12 @@ void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, ui
 void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward) {
 	swr__crash_if_null(swr);
 
+	// Limit the radius so it doesn't look weird
+	radius = SWR_MIN(radius, (float)SWR_MIN(rect.w, rect.h) / 2.0F);
+
 	struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
 
 	struct swr_rect visible = swr_rect_intersect(buffer_rect, rect);
-
-	// Limit the radius so it doesn't look weird
-	radius = SWR_MIN(radius, (float)SWR_MIN(rect.w, rect.h) / 2.0F);
 
 	// Need some extra space if the thickness extends outward
 	int grow = (int)ceil(thickness_outward);
@@ -838,6 +855,16 @@ float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius) 
 	rect.w -= 1.0F;
 	rect.h -= 1.0F;
 
+	// Fast path for the horizontal rectangle
+	if (y > rect.y + radius && y < rect.y + rect.h - radius) {
+		return 1.0F;
+	}
+
+	// Fast path for the vertical rectangle
+	if (x > rect.x + radius && x < rect.x + rect.w - radius) {
+		return 1.0F;
+	}
+
 	x -= rect.x + rect.w / 2.0F;
 	y -= rect.y + rect.h / 2.0F;
 
@@ -873,6 +900,16 @@ float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float 
 // At t = 0.0, a is returned. At t = 1.0, b is returned.
 float swr__lerp(float a, float b, float t) {
 	return a * (1.0F - t) + b*t;
+}
+
+void swr__print_128i(__m128i value) {
+	uint8_t bytes[16];
+	_mm_storeu_si128((__m128i *)bytes, value);
+
+	for (int i = 15; i >= 0; i--) {
+		printf("%02x", bytes[i]);
+	}
+	printf("\n");
 }
 /* END OF PRIVATE FUNCTIONS IMPLEMENTATIONS */
 
