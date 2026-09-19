@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <float.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -70,6 +71,8 @@ struct swr_output {
 	int history_peak_counter;
 	float history_peak_after;
 	int history_peak_after_counter;
+
+	float history_min;
 
 	float graph_scale;
 };
@@ -291,6 +294,23 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 
 	swr->frame_time_history[swr->frame_time_history_index] = diff_seconds;
 
+	swr->history_min = FLT_MAX;
+	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
+		if (swr->frame_time_history[i] != 0.0F) {
+			swr->history_min = SWR_MIN(swr->history_min, swr->frame_time_history[i]);
+		}
+	}
+
+	swr->history_peak = 0.0F;
+	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
+		swr->history_peak = SWR_MAX(swr->history_peak, swr->frame_time_history[i]);
+	}
+
+	/*float peak = 0.0F;
+	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
+		peak = SWR_MAX(peak, swr->frame_time_history[i]);
+	}
+
 	// Find peak value in swr->frame_time_history
 	// (This is a complicated alternative to a simple for loop)
 	if (diff_seconds > swr->history_peak) {
@@ -313,6 +333,12 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 			swr->history_peak_after = 0.0F;
 		}
 	}
+
+	if (peak != swr->history_peak) {
+		printf("peak: %f, wrong: %f\n", peak, swr->history_peak);
+		printf("peak_counter: %i, peak_after: %f, peak_after_counter: %i\n", swr->history_peak_counter, swr->history_peak_after, swr->history_peak_after_counter);
+		assert(0);
+	}*/
 
 	// Smoothly scale up swr->graph_scale when the peak reduces
 	if (swr->history_peak > swr->graph_scale) {
@@ -352,9 +378,6 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 			};
 
 			uint8_t alpha = 140;
-			int proximity = 20 - SWR_MIN(20, abs(index - swr->frame_time_history_index));
-			alpha += (uint8_t)(proximity * 8);
-
 			if (index > swr->frame_time_history_index) {
 				alpha = 30;
 			}
@@ -363,29 +386,51 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 			swr_draw_rectangle(swr, rect, rect_color);
 		}
 
-		// Draw peak line
-		int peak_height = (int)(swr->history_peak / swr->graph_scale * (float)height);
-		int peak_y = y_offset + (height - peak_height);
-		struct swr_rect rect = {
-			.x = x_offset,
-			.y = peak_y,
-			.w = SWR_FRAME_TIME_HISTORY_SIZE,
-			.h = 1,
-		};
-		swr_draw_rectangle(swr, rect, swr_rgba(255,0,0,255));
+		{
+			// Draw peak line
+			int peak_height = (int)(swr->history_peak / swr->graph_scale * (float)height);
+			int peak_y = y_offset + (height - peak_height);
+			struct swr_rect rect = {
+				.x = x_offset,
+				.y = peak_y,
+				.w = SWR_FRAME_TIME_HISTORY_SIZE,
+				.h = 1,
+			};
+			swr_draw_rectangle(swr, rect, swr_rgba(255,0,0,255));
 
-		// Draw peak time in milliseconds
-		int text_y = peak_y;
-		char s[32];
-		snprintf(s, 32, "%.2fms", swr->history_peak * 1000.0F);
-		struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
-		swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w, text_y);
+			// Draw peak time in milliseconds
+			int text_y = peak_y;
+			char s[32];
+			snprintf(s, 32, "%.2fms", swr->history_peak * 1000.0F);
+			struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
+			swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w - 5, text_y);
+		}
+
+		{
+			// Draw min line
+			int peak_height = (int)(swr->history_min / swr->graph_scale * (float)height);
+			int peak_y = y_offset + (height - peak_height);
+			struct swr_rect rect = {
+				.x = x_offset,
+				.y = peak_y,
+				.w = SWR_FRAME_TIME_HISTORY_SIZE,
+				.h = 1,
+			};
+			swr_draw_rectangle(swr, rect, swr_rgba(0,0,255,255));
+
+			// Draw min time in milliseconds
+			int text_y = peak_y;
+			char s[32];
+			snprintf(s, 32, "%.2fms", swr->history_min * 1000.0F);
+			struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
+			swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w - 5, text_y);
+		}
 	}
 	swr->frame_time_history_index = (swr->frame_time_history_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
 
 	float fps = 1.0F / diff_seconds;
 	char fpsText[32];
-	snprintf(fpsText, 32, "%f fps", fps);
+	snprintf(fpsText, 32, "%.1f fps", fps);
 	swr_draw_text(swr, fpsText, size, color, x, y);
 }
 
