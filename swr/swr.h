@@ -855,12 +855,12 @@ float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius) 
 	rect.w -= 1.0F;
 	rect.h -= 1.0F;
 
-	// Fast path for the horizontal rectangle
+	// Fast path for the inner horizontal rectangle
 	if (y > rect.y + radius && y < rect.y + rect.h - radius) {
 		return 1.0F;
 	}
 
-	// Fast path for the vertical rectangle
+	// Fast path for the inner vertical rectangle
 	if (x > rect.x + radius && x < rect.x + rect.w - radius) {
 		return 1.0F;
 	}
