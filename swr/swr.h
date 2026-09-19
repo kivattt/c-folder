@@ -65,15 +65,8 @@ struct swr_output {
 	int64_t last_draw_fps_call_time_ns;
 	float frame_time_history[SWR_FRAME_TIME_HISTORY_SIZE];
 	int frame_time_history_index;
-
-	// Peak detection
-	float history_peak;
-	int history_peak_counter;
-	float history_peak_after;
-	int history_peak_after_counter;
-
+	float history_max;
 	float history_min;
-
 	float graph_scale;
 };
 
@@ -295,58 +288,21 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 	swr->frame_time_history[swr->frame_time_history_index] = diff_seconds;
 
 	swr->history_min = FLT_MAX;
+	swr->history_max = 0.0F;
 	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
 		if (swr->frame_time_history[i] != 0.0F) {
 			swr->history_min = SWR_MIN(swr->history_min, swr->frame_time_history[i]);
+			swr->history_max = SWR_MAX(swr->history_max, swr->frame_time_history[i]);
 		}
 	}
-
-	swr->history_peak = 0.0F;
-	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
-		swr->history_peak = SWR_MAX(swr->history_peak, swr->frame_time_history[i]);
-	}
-
-	/*float peak = 0.0F;
-	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
-		peak = SWR_MAX(peak, swr->frame_time_history[i]);
-	}
-
-	// Find peak value in swr->frame_time_history
-	// (This is a complicated alternative to a simple for loop)
-	if (diff_seconds > swr->history_peak) {
-		swr->history_peak_counter = 0;
-		swr->history_peak = diff_seconds;
-		swr->history_peak_after = 0.0F;
-	} else {
-		swr->history_peak_counter += 1;
-
-		if (diff_seconds > swr->history_peak_after) {
-			swr->history_peak_after = diff_seconds;
-			swr->history_peak_after_counter = 0;
-		} else {
-			swr->history_peak_after_counter += 1;
-		}
-
-		if (swr->history_peak_counter > SWR_FRAME_TIME_HISTORY_SIZE) {
-			swr->history_peak_counter = swr->history_peak_after_counter;
-			swr->history_peak = swr->history_peak_after;
-			swr->history_peak_after = 0.0F;
-		}
-	}
-
-	if (peak != swr->history_peak) {
-		printf("peak: %f, wrong: %f\n", peak, swr->history_peak);
-		printf("peak_counter: %i, peak_after: %f, peak_after_counter: %i\n", swr->history_peak_counter, swr->history_peak_after, swr->history_peak_after_counter);
-		assert(0);
-	}*/
 
 	// Smoothly scale up swr->graph_scale when the peak reduces
-	if (swr->history_peak > swr->graph_scale) {
-		swr->graph_scale = swr->history_peak;
+	if (swr->history_max > swr->graph_scale) {
+		swr->graph_scale = swr->history_max;
 	} else {
 		float settle_speed = 500.0F;
-		float peak_diff = (float)fabs(swr->history_peak - swr->graph_scale); // Large peaks will settle faster
-		swr->graph_scale = swr__lerp(swr->graph_scale, swr->history_peak, SWR_MIN(1.0F, settle_speed * peak_diff * diff_seconds));
+		float peak_diff = (float)fabs(swr->history_max - swr->graph_scale); // Large peaks will settle faster
+		swr->graph_scale = swr__lerp(swr->graph_scale, swr->history_max, SWR_MIN(1.0F, settle_speed * peak_diff * diff_seconds));
 	}
 
 	// Draw graph of frame history
@@ -388,7 +344,7 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 
 		{
 			// Draw peak line
-			int peak_height = (int)(swr->history_peak / swr->graph_scale * (float)height);
+			int peak_height = (int)(swr->history_max / swr->graph_scale * (float)height);
 			int peak_y = y_offset + (height - peak_height);
 			struct swr_rect rect = {
 				.x = x_offset,
@@ -401,7 +357,7 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 			// Draw peak time in milliseconds
 			int text_y = peak_y;
 			char s[32];
-			snprintf(s, 32, "%.2fms", swr->history_peak * 1000.0F);
+			snprintf(s, 32, "%.2fms", swr->history_max * 1000.0F);
 			struct swr_rect measured = swr_measure_text(swr, s, size, swr_rgb(255,255,255), 0, text_y);
 			swr_draw_text(swr, s, size, swr_rgb(255,255,255), x_offset - measured.w - 5, text_y);
 		}
