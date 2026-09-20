@@ -122,6 +122,7 @@ struct swr_float_rect {
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 	float swr__lerp(float a, float b, float t);
 	void swr__print_128i(__m128i value);
+	void swr__print_256i(__m256i value);
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -207,6 +208,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
 	// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF));
+	//dest_color = _mm_and_si128(dest_color, _mm_set1_epi16(0xFF)); // TODO: Is this better?
 
 	// NOT FASTER:
 	/*uint32_t result = 0xFF000000;
@@ -428,12 +430,80 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	int x_offset = SWR_MAX(0, rect.x);
 	int y_offset = SWR_MAX(0, rect.y);
 
-	for (int y = 0; y < visible.h; y++) {
+	/*for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
 			int out_x = x + x_offset;
 			int out_y = y + y_offset;
-
 			int dest_index = out_y * swr->width + out_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}*/
+
+	short int src_a = (short int)((color >> 24) & 0xFF);
+	unsigned short src_r = (color >> 16) & 0xFF;
+	unsigned short src_g = (color >>  8) & 0xFF;
+	unsigned short src_b = (color >>  0) & 0xFF;
+
+	const __m256i constant_one_minus_alpha = _mm256_set1_epi16(255 - src_a);
+	const __m256i constant_511 = _mm256_set1_epi16(511); // 256*256 - 255*255
+	const __m256i constant_1 = _mm256_set1_epi16(1);
+	const __m256i constant_255 = _mm256_set1_epi16(255);
+	const __m128i constant_output_alpha_mask = _mm_set1_epi32((int32_t)0xFF000000);
+
+	// src *= alpha (important to do this unsigned
+	src_r *= (unsigned short)src_a;
+	src_g *= (unsigned short)src_a;
+	src_b *= (unsigned short)src_a;
+
+	// 4 x 16 bit values
+	int64_t src_color_64 = ((uint64_t)src_r << 32) | ((uint64_t)src_g << 16) | src_b;
+	// four pixels
+	__m256i src_color = _mm256_set1_epi64x(src_color_64);
+
+	for (int y = 0; y < visible.h; y++) {
+		int width_remainder = visible.w & 0b11;
+		int width_no_remainder = visible.w - width_remainder;
+
+		// Process 4 pixels at a time
+		for (int x = 0; x < width_no_remainder; x += 4) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+			int dest_index = out_y * swr->width + out_x;
+
+			// four pixels (alpha unused)
+			// 4x ARGB 0xAABBCCDD
+			__m128i dest_128 = _mm_loadu_si128((__m128i const*)(&swr->dest[dest_index]));
+			// 4x ARGB 0x00AA00BB00CC00DD
+			//__m256i dest_color = _mm256_cvtepi8_epi16(dest_128);
+			__m256i dest_color = _mm256_cvtepu8_epi16(dest_128);
+
+			// dest *= 255 - alpha
+			__m256i before = dest_color;
+			dest_color = _mm256_mullo_epi16(dest_color, constant_one_minus_alpha);
+
+			// dest += src
+			dest_color = _mm256_add_epi16(dest_color, src_color);
+
+			// dest /= 255
+			dest_color = _mm256_add_epi16(dest_color, constant_511); // TODO: remove this and simply add 511 to src_color?
+			dest_color = _mm256_srli_epi16(dest_color, 8);
+			dest_color = _mm256_sub_epi16(dest_color, constant_1);
+			// Clamp to 0xFF. This is required because _mm256_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+			dest_color = _mm256_and_si256(dest_color, constant_255);
+
+			__m128i output = _mm_packus_epi16(_mm256_extracti128_si256(dest_color, 0), _mm256_extracti128_si256(dest_color, 1));
+			// Need to set alpha values to 0xFF
+			output = _mm_or_si128(output, constant_output_alpha_mask);
+			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
+		}
+
+		// Process the remainder
+		for (int x = 0; x < width_remainder; x++) {
+			int out_x = x_offset + x + width_no_remainder;
+			int out_y = y_offset + y;
+			int dest_index = out_y * swr->width + out_x;
+
 			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
 			swr->dest[dest_index] = output_color;
 		}
@@ -907,6 +977,16 @@ void swr__print_128i(__m128i value) {
 	_mm_storeu_si128((__m128i *)bytes, value);
 
 	for (int i = 15; i >= 0; i--) {
+		printf("%02x", bytes[i]);
+	}
+	printf("\n");
+}
+
+void swr__print_256i(__m256i value) {
+	uint8_t bytes[32];
+	_mm256_storeu_si256((__m256i *)bytes, value);
+
+	for (int i = 31; i >= 0; i--) {
 		printf("%02x", bytes[i]);
 	}
 	printf("\n");

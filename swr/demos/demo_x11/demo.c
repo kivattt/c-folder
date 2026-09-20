@@ -154,16 +154,19 @@ int main() {
 
 		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
 		swr_draw_fill(&r, swr_rgb(18, 18, 20));
+		//swr_draw_fill(&r, swr_rgb(255,255,255));
+		//swr_draw_fill(&r, swr_rgb(0,0,0));
+		//swr_draw_fill(&r, swr_rgb(10,10,10));
 
 		swr_draw_text(&r, "Hello, world from swr! Lorem ipsum", 22, swr_rgb(255,255,255), 0, 60);
 		struct swr_rect rect = {
 			.x = 100,
 			.y = 60,
-			.w = 100,
-			.h = 100,
+			.w = 87,
+			.h = 87,
 		};
-		swr_draw_rectangle(&r, rect, swr_rgba(0, 255, 0, 100));
-
+		swr_draw_rectangle(&r, rect, swr_rgba(100, 108, 116, 128));
+		
 		rect = (struct swr_rect){
 			.x = 300,
 			.y = 60,
@@ -181,10 +184,11 @@ int main() {
 			rect = (struct swr_rect){
 				.x = 300 + i*100,
 				.y = 60,
-				.w = 80,
-				.h = 80,
+				.w = 87,
+				.h = 87,
 			};
-			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), round);
+			//swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), round);
+			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 255), round);
 		}
 
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
