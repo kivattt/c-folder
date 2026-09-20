@@ -479,7 +479,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			__m256i dest_color = _mm256_cvtepu8_epi16(dest_128);
 
 			// dest *= 255 - alpha
-			__m256i before = dest_color;
 			dest_color = _mm256_mullo_epi16(dest_color, constant_one_minus_alpha);
 
 			// dest += src
