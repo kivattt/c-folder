@@ -430,15 +430,24 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	int x_offset = SWR_MAX(0, rect.x);
 	int y_offset = SWR_MAX(0, rect.y);
 
-	/*for (int y = 0; y < visible.h; y++) {
-		for (int x = 0; x < visible.w; x++) {
-			int out_x = x + x_offset;
-			int out_y = y + y_offset;
-			int dest_index = out_y * swr->width + out_x;
-			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
-			swr->dest[dest_index] = output_color;
+	if (color >> 24 == 0x00) {
+		return;
+	}
+
+	if (color >> 24 == 0xFF) {
+		color = color | 0xFF000000;
+
+		int dest_index;
+		for (int y = y_offset; y < visible.h + y_offset; y++) {
+			dest_index = y * swr->width + x_offset;
+			for (int i = 0; i < visible.w; i++) {
+				swr->dest[dest_index] = color;
+				dest_index++;
+			}
 		}
-	}*/
+
+		return;
+	}
 
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
@@ -457,8 +466,8 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	src_b *= (unsigned short)src_a;
 
 	// 4 x 16 bit values
-	int64_t src_color_64 = ((uint64_t)src_r << 32) | ((uint64_t)src_g << 16) | src_b;
-	// four pixels
+	int64_t src_color_64 = ((int64_t)src_r << 32) | ((int64_t)src_g << 16) | src_b;
+	// Four pixels
 	__m256i src_color = _mm256_set1_epi64x(src_color_64);
 
 	for (int y = 0; y < visible.h; y++) {
