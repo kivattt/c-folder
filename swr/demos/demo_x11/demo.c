@@ -187,8 +187,8 @@ int main() {
 				.w = 87,
 				.h = 87,
 			};
-			//swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), round);
-			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 255), round);
+			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), round);
+			//swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 255), round);
 		}
 
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
