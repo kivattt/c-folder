@@ -17,6 +17,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+//#define SWR_DEBUG_INFO
 #define SWR_FRAME_TIME_HISTORY_SIZE 512
 
 #ifdef __clang__
@@ -88,7 +89,6 @@ struct swr_float_rect {
 	uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	float swr_linear_to_srgb(float val);
-	uint8_t swr_linear_to_srgb2(uint8_t val);
 	uint32_t swr_abgr_to_argb(uint32_t abgr);
 	float swr_argb_to_float_alpha(uint32_t argb);
 	uint32_t swr_float_alpha_to_argb(float alpha);
@@ -665,6 +665,12 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const int32_t font_height_pixels) {
 	assert(font != NULL);
 
+#ifdef SWR_DEBUG_INFO
+	struct timespec time;
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	double start = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
+#endif
+
 	FT_Library library;
 	FT_Error error = 0;
 	FT_Face face = NULL;
@@ -799,6 +805,12 @@ done:
 	FT_Done_Face(face);
 	FT_Done_FreeType(library);
 
+#ifdef SWR_DEBUG_INFO
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	double end = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
+	double duration = end - start;
+	printf("swr: swr_fontbmp_generate_from_memory took %f ms\n", duration);
+#endif
 
 	return error;
 }
