@@ -851,11 +851,11 @@ int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_
 
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
-			// Fetch the pixel from img
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			assert(img.pitch == img.width);
 
+			// Fetch the pixel from img
 			int img_index = img_sample_y * (int)img.pitch + img_sample_x;
 			uint8_t alpha = img.bitmap_data[img_index];
 
