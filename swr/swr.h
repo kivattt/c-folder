@@ -68,6 +68,8 @@ struct swr_output {
 	float history_max;
 	float history_min;
 	float graph_scale;
+
+	uint8_t linear_to_sgrb_lut[256];
 };
 
 struct swr_rect {
@@ -109,8 +111,8 @@ struct swr_float_rect {
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
 	void swr_fontbmp_deinitialize(struct swr_font font);
-	FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const int32_t font_height_pixels);
-	FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const int32_t font_height_pixels);
+	FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, uint8_t *linear_to_srgb_lut, const int32_t font_height_pixels);
+	FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, uint8_t *linear_to_srgb_lut, const int32_t font_height_pixels);
 /* END OF PUBLIC FUNCTIONS */
 
 /* PRIVATE FUNCTIONS */
@@ -140,6 +142,10 @@ void swr_initialize(struct swr_output *swr) {
 	memset(swr, 0, sizeof(struct swr_output));
 	swr->last_default_font_size = -1;
 	swr->default_font = swr_fontbmp_initialize();
+
+	for (int i = 0; i < 256; i++) {
+		swr->linear_to_sgrb_lut[i] = (uint8_t)(255.0F * pow((float)i / 255.0F, 1.0 / 1.5));
+	}
 }
 
 void swr_deinitialize(struct swr_output *swr) {
@@ -225,13 +231,6 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 float swr_linear_to_srgb(float val) {
 	return (float)pow(val, 1.0 / 1.5);
-}
-
-uint8_t swr_linear_to_srgb2(uint8_t val) {
-	// For some reason, "gamma 2.2" actually means gamma 1.5.
-	// Fuck you. That's why
-	// source: my eyes
-	return (uint8_t)(255.0F * pow((float)val / 255.0F, 1.0 / 1.5));
 }
 
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
@@ -405,7 +404,7 @@ struct swr_rect swr_draw_text(struct swr_output *swr, const char *text, int32_t 
 	swr__crash_if_null(swr);
 
 	if (size != swr->last_default_font_size) {
-		int err = swr_fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
+		int err = swr_fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, swr->linear_to_sgrb_lut, size);
 		if (err) {
 			printf("swr_draw_text: A call to swr_fontbmp_generate_from_memory errored with code %i\n", err);
 			assert(0);
@@ -609,7 +608,7 @@ struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32
 	swr__crash_if_null(swr);
 
 	if (size != swr->last_default_font_size) {
-		int err = swr_fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, size);
+		int err = swr_fontbmp_generate_from_memory(&swr->default_font, swr_default_font_data, swr_default_font_data_size, swr->linear_to_sgrb_lut, size);
 		if (err) {
 			printf("swr_draw_text: A call to swr_fontbmp_generate_from_memory errored with code %i\n", err);
 			assert(0);
@@ -642,7 +641,7 @@ void swr_fontbmp_deinitialize(struct swr_font font) {
 
 // Frees the font.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, const int32_t font_height_pixels) {
+FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, uint8_t *linear_to_srgb_lut, const int32_t font_height_pixels) {
 	assert(font != NULL);
 
 	int fd = open(font_filename, O_RDONLY);
@@ -660,7 +659,7 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 
 	size_t font_data_size = (size_t)st.st_size;
 	unsigned char *font_data = mmap(NULL, font_data_size, PROT_READ, MAP_SHARED, fd, 0);
-	FT_Error err = swr_fontbmp_generate_from_memory(font, font_data, font_data_size, font_height_pixels);
+	FT_Error err = swr_fontbmp_generate_from_memory(font, font_data, font_data_size, linear_to_srgb_lut, font_height_pixels);
 
 	close(fd);
 	munmap(font_data, font_data_size);
@@ -669,7 +668,7 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 
 // Frees the font.bitmap_data before re-allocating it.
 // Returns non-zero on failure
-FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const int32_t font_height_pixels) {
+FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, uint8_t *linear_to_srgb_lut, const int32_t font_height_pixels) {
 	assert(font != NULL);
 
 	FT_Library library;
@@ -772,6 +771,11 @@ FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned 
 		assert(width == pitch);
 
 		memcpy(&font->internal_bitmap_data[index], face->glyph->bitmap.buffer, pitch*rows);
+		// Convert linear to srgb
+		for (unsigned i = 0; i < pitch*rows; i++) {
+			font->internal_bitmap_data[i] = linear_to_srgb_lut[font->internal_bitmap_data[i]];
+		}
+
 		font->glyph_list[character] = (struct swr_glyph_bitmap){
 			.width = width,
 			.rows = rows,
@@ -851,12 +855,11 @@ int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_
 			int img_sample_x = x + x_offset;
 			int img_sample_y = y + y_offset;
 			assert(img.pitch == img.width);
+
 			int img_index = img_sample_y * (int)img.pitch + img_sample_x;
+			uint8_t alpha = img.bitmap_data[img_index];
 
 			int buffer_index = (visible.y+y) * swr->width + (visible.x+x);
-
-			//uint8_t alpha = (uint8_t)((swr_linear_to_srgb(img.bitmap_data[img_index]) * (uint8_t)(color >> 24)) >> 8);
-			uint8_t alpha = (uint8_t)(swr_linear_to_srgb(img.bitmap_data[img_index] / 255.0F) * (float)(color >> 24));
 			uint32_t img_color = (uint32_t)(swr_alpha_blend(swr->dest[buffer_index], (uint32_t)(alpha << 24) | (color & 0x00FFFFFF)));
 
 			// Set the pixel
