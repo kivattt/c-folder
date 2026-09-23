@@ -202,11 +202,11 @@ int main() {
 			}
 		}
 
-		struct swr_rect measure = swr_measure_text_ex(&r, "swr software rendering on X11 shared memory", &font, swr_rgb(255,255,255), 0, 50);
-		int x = (int)renderer.width / 2 - measure.w / 2 + mouse_x*0;
+		//struct swr_rect measure = swr_measure_text_ex(&r, "swr software rendering on X11 shared memory", &font, swr_rgb(255,255,255), 0, 50);
+		//int x = (int)renderer.width / 2 - measure.w / 2 + mouse_x*0;
 		//swr_draw_text_ex(&r, "swr software rendering on X11 shared memory", &font, swr_rgb(255,255,255), x, 0);
 
-		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
+		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0*mouse_x);
 
 		swr_convert_image_argb_to_abgr(r.dest, r.width * r.height);
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
