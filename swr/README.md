@@ -10,6 +10,8 @@ gcc $(pkg-config --cflags freetype2) -lfreetype -lm
 -I/usr/local/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include
 ```
 
+gcc, clang and tcc work for compiling this library. If you're using tcc, make sure to #define SWR\_NO\_SIMD, or use `tcc -DSWR_NO_SIMD`.
+
 # Changes
 
 `struct SWRender` was changed to `struct swr_output`
