@@ -193,7 +193,6 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	}
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
-
 #ifdef SWR_NO_SIMD
 	uint8_t a = (uint8_t)(src >> 24);
 	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
@@ -227,12 +226,6 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	dest_color = _mm_sub_epi16(dest_color, _mm_set1_epi16(1));
 	// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 	dest_color = _mm_min_epu16(dest_color, _mm_set1_epi16(0xFF));
-	//dest_color = _mm_and_si128(dest_color, _mm_set1_epi16(0xFF)); // TODO: Is this better?
-
-	// NOT FASTER:
-	/*uint32_t result = 0xFF000000;
-	int64_t lower_bits = _mm_cvtsi128_si64(dest_color);
-	result |= (uint32_t)(((lower_bits >> 16) & 0xFF0000) | ((lower_bits >> 8) & 0xFF00) | (lower_bits & 0xFF));*/
 
 	uint32_t result = 0xFF000000;
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 2)) << 16; // red
