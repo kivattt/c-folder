@@ -89,9 +89,12 @@ struct swr_float_rect {
 	uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	float swr_linear_to_srgb(float val);
-	uint32_t swr_abgr_to_argb(uint32_t abgr);
 	float swr_argb_to_float_alpha(uint32_t argb);
 	uint32_t swr_float_alpha_to_argb(float alpha);
+	uint32_t swr_argb_to_abgr(uint32_t argb);
+	uint32_t swr_abgr_to_argb(uint32_t abgr);
+	void swr_convert_image_argb_to_abgr(uint32_t *image, int length);
+	void swr_convert_image_abgr_to_argb(uint32_t *image, int length);
 
 	// Drawing functions
 	void swr_draw_fill(struct swr_output *swr, uint32_t color);
@@ -230,16 +233,32 @@ float swr_linear_to_srgb(float val) {
 	return (float)pow(val, 1.0 / 1.5);
 }
 
-uint32_t swr_abgr_to_argb(uint32_t abgr) {
-	return SWR_ROTR(__builtin_bswap32(abgr), 8);
-}
-
 float swr_argb_to_float_alpha(uint32_t argb) {
 	return (float)(argb >> 24) / 255.0F;
 }
 
 uint32_t swr_float_alpha_to_argb(float alpha) {
 	return (uint32_t)((uint8_t)(alpha * 255.0) << 24);
+}
+
+uint32_t swr_argb_to_abgr(uint32_t argb) {
+	return SWR_ROTR(__builtin_bswap32(argb), 8);
+}
+
+uint32_t swr_abgr_to_argb(uint32_t abgr) {
+	// The conversion works both ways
+	return swr_argb_to_abgr(abgr);
+}
+
+void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
+	for (int i = 0; i < length; i++) {
+		image[i] = swr_abgr_to_argb(image[i]);
+	}
+}
+
+void swr_convert_image_abgr_to_argb(uint32_t *image, int length) {
+	// The conversion works both ways
+	return swr_convert_image_argb_to_abgr(image, length);
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
