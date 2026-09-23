@@ -1,9 +1,13 @@
 #ifndef SWR_H
 #define SWR_H
 
+//#define SWR_NO_SIMD
+
 #include <assert.h>
 #include <fcntl.h>
+#ifndef SWR_NO_SIMD
 #include <immintrin.h> // Provides _rotr()
+#endif
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -20,10 +24,12 @@
 //#define SWR_DEBUG_INFO
 #define SWR_FRAME_TIME_HISTORY_SIZE 512
 
+#ifndef SWR_NO_SIMD
 #ifdef __clang__
 	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
 #else
 	#define SWR_ROTR(a, b) _rotr((a), (b))
+#endif
 #endif
 
 #define SWR_MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -127,8 +133,10 @@ struct swr_float_rect {
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 	float swr__lerp(float a, float b, float t);
+#ifndef SWR_NO_SIMD
 	void swr__print_128i(__m128i value);
 	void swr__print_256i(__m256i value);
+#endif
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
@@ -186,8 +194,13 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
 
-	/* On benchmark (desktop): gcc: 262ms clang: 208ms */
-	/* On benchmark (laptop): gcc: 328ms clang: 241ms */
+#ifdef SWR_NO_SIMD
+	uint8_t a = (uint8_t)(src >> 24);
+	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
+	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
+	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
+	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
+#else
 	short int src_r = (src >> 16) & 0xFF;
 	short int src_g = (src >>  8) & 0xFF;
 	short int src_b = (src >>  0) & 0xFF;
@@ -227,6 +240,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 0)) <<  0; // blue
 
 	return result;
+#endif
 }
 
 float swr_linear_to_srgb(float val) {
@@ -242,7 +256,16 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 }
 
 uint32_t swr_argb_to_abgr(uint32_t argb) {
+#ifndef SWR_NO_SIMD
 	return SWR_ROTR(__builtin_bswap32(argb), 8);
+#else
+	uint32_t red = (argb >> 16) & 0xFF;
+	uint32_t blue = argb & 0xFF;
+	argb &= 0xFF00FF00;
+	argb |= red;
+	argb |= blue << 16;
+	return argb;
+#endif
 }
 
 uint32_t swr_abgr_to_argb(uint32_t abgr) {
@@ -263,38 +286,10 @@ void swr_convert_image_abgr_to_argb(uint32_t *image, int length) {
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
 	swr__crash_if_null(swr);
-
-	// Benchmark (laptop) gcc: 353ms, clang: 353ms
-	// Benchmark (laptop, demo_x11) gcc: 1200-1300 fps, clang: 1000-1200 fps
 	int size = swr->width * swr->height;
 	for (int i = 0; i < size; i++) {
 		swr->dest[i] = color;
 	}
-
-	// Same speed in fps as the basic for loop above on my laptop.
-	/*int size = swr->width * swr->height;
-	uint32_t* start = swr->dest;
-	uint32_t* end = start + size;
-	uint32_t* restrict ptr = start;
-
-	for(; ptr < end && ((size_t)ptr % 64) != 0; ptr++) {
-		*ptr = color;
-	}
-
-	//uint32_t* aligned_end = (uint32_t*)((uintptr_t)end & ~31ull);
-	uint32_t* aligned_end = (uint32_t*)((uintptr_t)end & ~63ull);
-	//__m256i vcolor = _mm256_set1_epi32((int)color);
-	__m512i vcolor = _mm512_set1_epi32((int)color);
-
-	//for (; ptr < aligned_end; ptr += 8) {
-		//_mm256_store_si256((__m256i*)ptr, vcolor);
-	for (; ptr < aligned_end; ptr += 16) {
-		_mm512_store_si512((__m512i*)ptr, vcolor);
-	}
-
-	for(; ptr < end; ptr++) {
-		*ptr = color;
-	}*/
 }
 
 void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y) {
@@ -464,6 +459,17 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
+#ifdef SWR_NO_SIMD
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+			int dest_index = out_y * swr->width + out_x;
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+#else
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
 	unsigned short src_g = (color >>  8) & 0xFF;
@@ -531,6 +537,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			swr->dest[dest_index] = output_color;
 		}
 	}
+#endif
 }
 
 void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius) {
@@ -1028,6 +1035,7 @@ float swr__lerp(float a, float b, float t) {
 	return a * (1.0F - t) + b*t;
 }
 
+#ifndef SWR_NO_SIMD
 void swr__print_128i(__m128i value) {
 	uint8_t bytes[16];
 	_mm_storeu_si128((__m128i *)bytes, value);
@@ -1047,6 +1055,7 @@ void swr__print_256i(__m256i value) {
 	}
 	printf("\n");
 }
+#endif
 /* END OF PRIVATE FUNCTIONS IMPLEMENTATIONS */
 
 #endif // SWR_IMPLEMENTATION
