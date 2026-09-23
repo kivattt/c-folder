@@ -29,3 +29,12 @@ int function_name(int *my_param);
 int myParam;
 int myResult = function_name(&myParam);
 ```
+Actually, i want this:
+```c
+// Function definition
+int function_name(int *my_param);
+
+// User code
+int my_param;
+int my_result = function_name(&my_param);
+```

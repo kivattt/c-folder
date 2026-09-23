@@ -106,6 +106,10 @@ struct swr_float_rect {
 	struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn. (Default font)
 	struct swr_rect swr_measure_text_ex(struct swr_output *swr, const char *text, struct swr_font *font_bitmaps, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn.
 
+	// Rectangle functions
+	struct swr_rect swr_rect_intersect(struct swr_rect a, struct swr_rect b);
+	int swr_is_point_in_rect(struct swr_rect rect, int x, int y);
+
 	// Font bitmap generation functions
 	struct swr_font swr_fontbmp_initialize(); // Allocates enough for the glyph_list (256 elements)
 	void swr_fontbmp_deinitialize(struct swr_font font);
@@ -115,7 +119,6 @@ struct swr_float_rect {
 
 /* PRIVATE FUNCTIONS */
 	void swr__crash_if_null(struct swr_output *swr);
-	struct swr_rect swr_rect_intersect(struct swr_rect a, struct swr_rect b);
 	int swr__draw_glyph(struct swr_output *swr, struct swr_glyph_bitmap img, uint32_t color, int img_x, int img_y);
 	struct swr_rect swr__draw_text_impl(struct swr_output *swr, const char *text, struct swr_font *font, uint32_t color, int x, int y, int actually_draw);
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
@@ -618,6 +621,34 @@ struct swr_rect swr_measure_text_ex(struct swr_output *swr, const char *text, st
 	return swr__draw_text_impl(swr, text, font_bitmaps, color /* Color doesn't matter */, x, y, 0 /* Don't draw anything */);
 }
 
+// Returns the intersection of two rectangles.
+// If there is no intersection, it returns an empty rectangle with x=0, y=0, w=0, h=0
+struct swr_rect swr_rect_intersect(struct swr_rect a, struct swr_rect b) {
+	int32_t x1 = SWR_MAX(a.x, b.x);
+	int32_t x2 = SWR_MIN(a.x + a.w, b.x + b.w);
+	int32_t y1 = SWR_MAX(a.y, b.y);
+	int32_t y2 = SWR_MIN(a.y + a.h, b.y + b.h);
+
+	struct swr_rect out;
+	if (x2 >= x1 && y2 >= y1) {
+		out = (struct swr_rect){.x = x1, .y = y1, .w = x2-x1, .h = y2-y1};
+	} else {
+		out = (struct swr_rect){.x = 0, .y = 0, .w = 0, .h = 0};
+	}
+
+	return out;
+}
+
+int swr_is_point_in_rect(struct swr_rect rect, int x, int y) {
+	if (rect.w == 0 && rect.h == 0) {
+		return 0;
+	}
+
+	int is_x_within = x >= rect.x && x <= (rect.x + rect.w);
+	int is_y_within = y >= rect.y && y <= (rect.y + rect.h);
+	return is_x_within && is_y_within;
+}
+
 struct swr_font swr_fontbmp_initialize() {
 #ifdef USE_DURING_DEVELOPMENT
 	printf("\x1b[31mRemember to remove USE_DURING_DEVELOPMENT !\x1b[0m\n");
@@ -826,24 +857,6 @@ void swr__crash_if_null(struct swr_output *swr) {
 		fprintf(stderr, "swr: dest was NULL, did you forget to call swr_set_output() ?\n");
 		assert(0);
 	}
-}
-
-// Returns the intersection of two rectangles.
-// If there is no intersection, it returns an empty rectangle with x=0, y=0, w=0, h=0
-struct swr_rect swr_rect_intersect(struct swr_rect a, struct swr_rect b) {
-	int32_t x1 = SWR_MAX(a.x, b.x);
-	int32_t x2 = SWR_MIN(a.x + a.w, b.x + b.w);
-	int32_t y1 = SWR_MAX(a.y, b.y);
-	int32_t y2 = SWR_MIN(a.y + a.h, b.y + b.h);
-
-	struct swr_rect out;
-	if (x2 >= x1 && y2 >= y1) {
-		out = (struct swr_rect){.x = x1, .y = y1, .w = x2-x1, .h = y2-y1};
-	} else {
-		out = (struct swr_rect){.x = 0, .y = 0, .w = 0, .h = 0};
-	}
-
-	return out;
 }
 
 // Draws a single-channel 8-bit alpha image to dest, outputs in ARGB
