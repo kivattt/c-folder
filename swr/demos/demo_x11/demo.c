@@ -14,6 +14,7 @@
 
 #include <X11/extensions/XShm.h>
 
+#define SWR_DEBUG_INFO
 #define SWR_IMPLEMENTATION
 #include "../../swr.h"
 
@@ -126,6 +127,9 @@ int main() {
 	struct swr_output r;
 	swr_initialize(&r);
 
+	struct swr_font font = swr_fontbmp_initialize();
+	swr_fontbmp_generate(&font, "/usr/share/fonts/truetype/ubuntu/Ubuntu-M.ttf", 13);
+
 	bool running = true;
 
 	int mouse_x = 0;
@@ -158,7 +162,7 @@ int main() {
 		//swr_draw_fill(&r, swr_rgb(0,0,0));
 		//swr_draw_fill(&r, swr_rgb(10,10,10));
 
-		swr_draw_text(&r, "Hello, world from swr! Lorem ipsum", 22, swr_rgb(255,255,255), 0, 60);
+		/*swr_draw_text(&r, "Hello, world from swr! Lorem ipsum", 22, swr_rgb(255,255,255), 0, 60);
 		struct swr_rect rect = {
 			.x = 100,
 			.y = 60,
@@ -189,9 +193,22 @@ int main() {
 			};
 			swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 100), round);
 			//swr_draw_rectangle_rounded(&r, rect, swr_rgba(100, 150, 200, 255), round);
+		}*/
+
+		int y = 50;
+		for (int i = 0; i < 29; i++) {
+			for (int j = 0; j < 3; j++) {
+				swr_draw_text(&r, "abcdefghijklmnopqrstuvwxyz yes", 22, swr_rgb(255,255,255), j*370, y + i * 22);
+			}
 		}
 
+		struct swr_rect measure = swr_measure_text_ex(&r, "swr software rendering on X11 shared memory", &font, swr_rgb(255,255,255), 0, 50);
+		int x = (int)renderer.width / 2 - measure.w / 2 + mouse_x*0;
+		//swr_draw_text_ex(&r, "swr software rendering on X11 shared memory", &font, swr_rgb(255,255,255), x, 0);
+
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0);
+
+		swr_convert_image_argb_to_abgr(r.dest, r.width * r.height);
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
 		XFlush(dpy);
@@ -203,5 +220,6 @@ int main() {
 	XCloseDisplay(dpy);
 
 	swr_deinitialize(&r);
+	swr_fontbmp_deinitialize(font);
 	return 0;
 }
