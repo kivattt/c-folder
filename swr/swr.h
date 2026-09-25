@@ -260,13 +260,13 @@ uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
 }
 
 float swr_linear_to_srgb(float val) {
-	// A gamma value of 1.5 somehow looks the most correct on text...
+	// A gamma value of 1.5 looks the most correct on text
+	// despite 2.2 being the "standard"
 	return (float)pow(val, 1.0 / 1.5);
 }
 
 float swr_srgb_to_linear(float val) {
-	// Should this be 1.5 aswell?
-	return (float)pow(val, 2.2);
+	return (float)pow(val, 1.5);
 }
 
 float swr_argb_to_float_alpha(uint32_t argb) {
