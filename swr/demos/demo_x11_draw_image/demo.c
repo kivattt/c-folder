@@ -104,7 +104,6 @@ int main() {
 	}
 
 	swr_convert_image_abgr_to_argb((uint32_t*)image, img_width*img_height);
-	swr_blur_image((uint32_t*)image, img_width, img_height);
 
 	Display *dpy = XOpenDisplay(NULL);
 	if (!dpy) {
@@ -149,6 +148,11 @@ int main() {
 			XEvent e;
 			XNextEvent(dpy, &e);
 			switch (e.type) {
+				case KeyPress:
+					if (XLookupKeysym(&e.xkey, 0) == XK_space) {
+						swr_blur_image((uint32_t*)image, img_width, img_height);
+					}
+					break;
 				case MotionNotify:
 					mouse_x = e.xmotion.x;
 					break;
@@ -170,6 +174,7 @@ int main() {
 		swr_draw_fill(&r, swr_rgb(18, 18, 20));
 
 		swr_draw_image(&r, (uint32_t*)image, img_width, img_height, 0, 0);
+		//swr_blur_image((uint32_t*)image, img_width, img_height);
 
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0*mouse_x);
 
