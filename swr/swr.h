@@ -186,7 +186,7 @@ uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b) {
-	return swr_rgba(r, g, b, 0xff);
+	return swr_rgba(r, g, b, 0xFF);
 }
 
 // 8-bit ARGB colors
@@ -252,10 +252,10 @@ uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
 		return color;
 	}
 
-	uint8_t a = (uint8_t)(((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255);
-	uint8_t r = (uint8_t)(((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255);
-	uint8_t g = (uint8_t)(((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255);
-	uint8_t b = (uint8_t)(((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255);
+	uint8_t a = (uint8_t)(((color >> 24) & 0xFF) * ((tint >> 24) & 0xFF) / 255);
+	uint8_t r = (uint8_t)(((color >> 16) & 0xFF) * ((tint >> 16) & 0xFF) / 255);
+	uint8_t g = (uint8_t)(((color >>  8) & 0xFF) * ((tint >>  8) & 0xFF) / 255);
+	uint8_t b = (uint8_t)(((color >>  0) & 0xFF) * ((tint >>  0) & 0xFF) / 255);
 
 	return (uint32_t)(a << 24 | r << 16 | g << 8 | b);
 }
@@ -304,7 +304,7 @@ void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
 #else // GCC is too bad at autovectorizing this, so I've manually entered what clang would output on my desktop here.
 	// Indexes 3,2,1,0 -> 3,0,1,2
 	int64_t low  = 0x0704050603000102;
-	int64_t high = 0x0f0c0d0e0b08090a;
+	int64_t high = 0x0F0C0D0E0B08090A;
 	const __m128i control_mask128 = _mm_set_epi64x(high, low);
 	const __m256i control_mask = _mm256_set_m128i(control_mask128, control_mask128);
 
@@ -334,10 +334,10 @@ void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
 /*#else
 	// Indexes 3,2,1,0 -> 3,0,1,2
 	int64_t low  = 0x0704050603000102;
-	int64_t high = 0x0f0c0d0e0b08090a;
+	int64_t high = 0x0F0C0D0E0B08090A;
 
 	//int64_t low  = 0x0405060700010203;
-	//int64_t high = 0x0c0d0e0f08090a0b;
+	//int64_t high = 0x0C0D0E0F08090A0B;
 	const __m128i control_mask128 = _mm_set_epi64x(high, low);
 	const __m256i control_mask = _mm256_set_m128i(control_mask128, control_mask128);
 
@@ -798,9 +798,9 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			int index = y * width + x;
 
 			uint32_t sample = img[index];
-			float r = swr_srgb_to_linear((float)((sample >> 16) & 0xff) / 255.0F);
-			float g = swr_srgb_to_linear((float)((sample >>  8) & 0xff) / 255.0F);
-			float b = swr_srgb_to_linear((float)((sample >>  0) & 0xff) / 255.0F);
+			float r = swr_srgb_to_linear((float)((sample >> 16) & 0xFF) / 255.0F);
+			float g = swr_srgb_to_linear((float)((sample >>  8) & 0xFF) / 255.0F);
+			float b = swr_srgb_to_linear((float)((sample >>  0) & 0xFF) / 255.0F);
 
 			int outIndex = 3 * index;
 			img_f32[outIndex+0] = r;
