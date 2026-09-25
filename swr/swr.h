@@ -96,6 +96,7 @@ struct swr_float_rect {
 	uint32_t swr_rgba(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 	uint32_t swr_rgb(uint8_t r, uint8_t g, uint8_t b);
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
+	uint32_t swr_color_tint(uint32_t color, uint32_t tint);
 	float swr_linear_to_srgb(float val);
 	float swr_argb_to_float_alpha(uint32_t argb);
 	uint32_t swr_float_alpha_to_argb(float alpha);
@@ -112,6 +113,8 @@ struct swr_float_rect {
 	void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t color);
 	void swr_draw_rectangle_rounded(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius);
 	void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
+	void swr_draw_image(struct swr_output *swr, uint32_t *img_argb, int width, int height, int x, int y);
+	void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
 
 	// Text measurement functions
 	struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn. (Default font)
@@ -236,6 +239,20 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	return result;
 #endif
+}
+
+uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
+	// Fast path
+	if (tint == 0xFFFFFFFF) {
+		return color;
+	}
+
+	uint8_t a = ((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255;
+	uint8_t r = ((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255;
+	uint8_t g = ((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255;
+	uint8_t b = ((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255;
+
+	return a << 24 | r << 16 | g << 8 | b;
 }
 
 float swr_linear_to_srgb(float val) {
@@ -676,6 +693,78 @@ void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect 
 			int dest_index = sample_y * swr->width + sample_x;
 			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], the_color);
 			swr->dest[dest_index] = output_color;
+		}
+	}
+}
+
+void swr_draw_image(struct swr_output *swr, uint32_t *img_argb, int width, int height, int x, int y) {
+	swr_draw_image_ex(swr, img_argb, width, height, 0xFFFFFFFF, 1.0, x, y);
+}
+
+void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y) {
+	swr__crash_if_null(swr);
+
+	if (width <= 0 || height <= 0) {
+		return;
+	}
+
+	if (scale == 1.0) {
+		struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width, .h = swr->height};
+		struct swr_rect img_rect =    {.x = x, .y = y, .w = width,      .h = height};
+
+		struct swr_rect visible = swr_rect_intersect(buffer_rect, img_rect);
+		int x_offset = -SWR_MIN(0, x);
+		int y_offset = -SWR_MIN(0, y);
+
+		for (int dy = 0; dy < visible.h; dy++) {
+			int img_sample_x = x_offset;
+			int img_sample_y = dy + y_offset;
+			int img_index = img_sample_y * width + img_sample_x;
+
+			int dest_index = (visible.y+dy) * swr->width + visible.x;
+
+			for (int dx = 0; dx < visible.w; dx++) {
+				// Sample the image pixel
+				uint32_t img_color = swr_color_tint(img_argb[img_index + dx], color_tint);
+
+				// Set the output pixel, with alpha-blending
+				swr->dest[dest_index + dx] = swr_alpha_blend(swr->dest[dest_index + dx], img_color);
+			}
+		}
+	} else {
+		scale = SWR_MAX(0.0, scale);
+		int width_scaled = width * scale;
+		int height_scaled = height * scale;
+
+		// To guard against a divide-by-zero later.
+		if (width_scaled <= 1 || height_scaled <= 1) {
+			return;
+		}
+
+		struct swr_rect buffer_rect = {.x = 0, .y = 0, .w = swr->width,    .h = swr->height};
+		struct swr_rect img_rect =    {.x = x, .y = y, .w = width_scaled, .h = height_scaled};
+
+		struct swr_rect visible = swr_rect_intersect(buffer_rect, img_rect);
+
+		// FIXME: use these variables to correctly render when x < 0 or y < 0. We may have to divide these by scale.
+		//int x_offset = -MIN(0, x);
+		//int y_offset = -MIN(0, y);
+
+		for (int dy = 0; dy < visible.h; dy++) {
+			for (int dx = 0; dx < visible.w; dx++) {
+				int img_sample_x = (float)dx / (float)(width_scaled - 1) * (width - 1);
+				int img_sample_y = (float)dy / (float)(height_scaled - 1) * (height - 1);
+				assert(img_sample_x >= 0 && img_sample_y >= 0);
+				assert(img_sample_x < width && img_sample_y < height);
+
+				// Sample the image pixel
+				int img_index = img_sample_y * width + img_sample_x;
+				uint32_t img_color = swr_color_tint(img_argb[img_index], color_tint);
+
+				// Set the output pixel, with alpha-blending
+				int dest_index = (visible.y + dy) * swr->width + (visible.x + dx);
+				swr->dest[dest_index] = swr_alpha_blend(swr->dest[dest_index], img_color);
+			}
 		}
 	}
 }
