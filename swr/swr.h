@@ -256,7 +256,7 @@ uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
 	uint8_t g = (uint8_t)(((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255);
 	uint8_t b = (uint8_t)(((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255);
 
-	return a << 24 | r << 16 | g << 8 | b;
+	return (uint32_t)(a << 24 | r << 16 | g << 8 | b);
 }
 
 float swr_linear_to_srgb(float val) {
@@ -892,7 +892,7 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			uint8_t r = (uint8_t)(255.0 * r_float);
 			uint8_t g = (uint8_t)(255.0 * g_float);
 			uint8_t b = (uint8_t)(255.0 * b_float);
-			uint32_t color = 0xFF000000 | r << 16 | g << 8 | b;
+			uint32_t color = 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
 			img[index] = color;
 		}
 	}
