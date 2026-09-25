@@ -780,6 +780,11 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 }
 
 void swr_blur_image(uint32_t *img, int width, int height) {
+#ifdef SWR_DEBUG_INFO
+	struct timespec time;
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	double start = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
+#endif
 	// float32 RGB
 	float *img_f32 = malloc(sizeof(float) * 3 * (unsigned long)width * (unsigned long)height);
 	float *line_buf = malloc(sizeof(float) * 3 * (unsigned long)SWR_MAX(width, height));
@@ -899,6 +904,12 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 
 	free(img_f32);
 	free(line_buf);
+#ifdef SWR_DEBUG_INFO
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	double end = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
+	double duration = end - start;
+	printf("swr: swr_blur_image took %f ms\n", duration);
+#endif
 }
 
 struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y) {
