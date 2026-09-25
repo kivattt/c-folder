@@ -98,6 +98,7 @@ struct swr_float_rect {
 	uint32_t swr_alpha_blend(uint32_t dest, uint32_t src);
 	uint32_t swr_color_tint(uint32_t color, uint32_t tint);
 	float swr_linear_to_srgb(float val);
+	float swr_srgb_to_linear(float val);
 	float swr_argb_to_float_alpha(uint32_t argb);
 	uint32_t swr_float_alpha_to_argb(float alpha);
 	uint32_t swr_argb_to_abgr(uint32_t argb);
@@ -115,6 +116,9 @@ struct swr_float_rect {
 	void swr_draw_rectangle_rounded_outline(struct swr_output *swr, struct swr_rect rect, uint32_t color, float radius, float thickness_inward, float thickness_outward);
 	void swr_draw_image(struct swr_output *swr, uint32_t *img_argb, int width, int height, int x, int y);
 	void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, int height, uint32_t color_tint, float scale, int x, int y);
+
+	// Blur effect
+	void swr_blur_image(uint32_t *img, int width, int height); // Blur in-place. (Allocates temporary f32 buffers larger than the input img!)
 
 	// Text measurement functions
 	struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y); // Get bounding box of text if it were to be drawn. (Default font)
@@ -247,16 +251,22 @@ uint32_t swr_color_tint(uint32_t color, uint32_t tint) {
 		return color;
 	}
 
-	uint8_t a = ((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255;
-	uint8_t r = ((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255;
-	uint8_t g = ((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255;
-	uint8_t b = ((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255;
+	uint8_t a = (uint8_t)(((color >> 24) & 0xff) * ((tint >> 24) & 0xff) / 255);
+	uint8_t r = (uint8_t)(((color >> 16) & 0xff) * ((tint >> 16) & 0xff) / 255);
+	uint8_t g = (uint8_t)(((color >>  8) & 0xff) * ((tint >>  8) & 0xff) / 255);
+	uint8_t b = (uint8_t)(((color >>  0) & 0xff) * ((tint >>  0) & 0xff) / 255);
 
 	return a << 24 | r << 16 | g << 8 | b;
 }
 
 float swr_linear_to_srgb(float val) {
+	// A gamma value of 1.5 somehow looks the most correct on text...
 	return (float)pow(val, 1.0 / 1.5);
+}
+
+float swr_srgb_to_linear(float val) {
+	// Should this be 1.5 aswell?
+	return (float)pow(val, 2.2);
 }
 
 float swr_argb_to_float_alpha(uint32_t argb) {
@@ -732,9 +742,9 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 			}
 		}
 	} else {
-		scale = SWR_MAX(0.0, scale);
-		int width_scaled = width * scale;
-		int height_scaled = height * scale;
+		scale = SWR_MAX(0.0F, scale);
+		int width_scaled = (int)((float)width * scale);
+		int height_scaled = (int)((float)height * scale);
 
 		// To guard against a divide-by-zero later.
 		if (width_scaled <= 1 || height_scaled <= 1) {
@@ -752,8 +762,8 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 
 		for (int dy = 0; dy < visible.h; dy++) {
 			for (int dx = 0; dx < visible.w; dx++) {
-				int img_sample_x = (float)dx / (float)(width_scaled - 1) * (width - 1);
-				int img_sample_y = (float)dy / (float)(height_scaled - 1) * (height - 1);
+				int img_sample_x = (int)((float)dx / (float)(width_scaled - 1) * (float)(width - 1));
+				int img_sample_y = (int)((float)dy / (float)(height_scaled - 1) * (float)(height - 1));
 				assert(img_sample_x >= 0 && img_sample_y >= 0);
 				assert(img_sample_x < width && img_sample_y < height);
 
@@ -767,6 +777,128 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 			}
 		}
 	}
+}
+
+void swr_blur_image(uint32_t *img, int width, int height) {
+	// float32 RGB
+	float *img_f32 = malloc(sizeof(float) * 3 * (unsigned long)width * (unsigned long)height);
+	float *line_buf = malloc(sizeof(float) * 3 * (unsigned long)SWR_MAX(width, height));
+
+	// Convert img to float32 precision, with sRGB -> linear conversion
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int index = y * width + x;
+
+			uint32_t sample = img[index];
+			float r = swr_srgb_to_linear((float)((sample >> 16) & 0xff) / 255.0F);
+			float g = swr_srgb_to_linear((float)((sample >>  8) & 0xff) / 255.0F);
+			float b = swr_srgb_to_linear((float)((sample >>  0) & 0xff) / 255.0F);
+
+			int outIndex = 3 * index;
+			img_f32[outIndex+0] = r;
+			img_f32[outIndex+1] = g;
+			img_f32[outIndex+2] = b;
+		}
+	}
+
+	// Compute the kernel
+	const int kernelSize = 101;
+	assert(kernelSize % 2 == 1); // The kernel size should be odd
+	float weights[512];
+	float sumDivisor = 0.0;
+	for (int dx = 0; dx < kernelSize; dx++) {
+		float dxNorm = (2.0F * (float)dx / (float)(kernelSize-1)) - 1.0F;
+		float weight = (float)pow(M_E, -6 * (dxNorm*dxNorm));
+		weights[dx] = weight;
+		sumDivisor += weight;
+	}
+
+	for (int dx = 0; dx < kernelSize; dx++) {
+		weights[dx] /= sumDivisor;
+	}
+
+	// Blur horizontally
+	for (int y = 0; y < height; y++) {
+		// Load the line buffer
+		int index = y * 3 * width;
+		memcpy(line_buf, &img_f32[index], sizeof(float) * 3 * (unsigned long)width);
+
+		// Blur
+		for (int x = 0; x < width; x++) {
+			float rSum = 0.0;
+			float gSum = 0.0;
+			float bSum = 0.0;
+			for (int dx = 0; dx < kernelSize; dx++) {
+				int xCentered = (int)(x + (dx - ceil((float)kernelSize/2.0)));
+				int sampleX = SWR_MIN(width-1, SWR_MAX(0, xCentered));
+				int sampleIndex = 3 * sampleX;
+
+				float weight = weights[dx];
+				rSum += weight * line_buf[sampleIndex+0];
+				gSum += weight * line_buf[sampleIndex+1];
+				bSum += weight * line_buf[sampleIndex+2];
+			}
+
+			int index = 3 * (y * width + x);
+			img_f32[index+0] = rSum;
+			img_f32[index+1] = gSum;
+			img_f32[index+2] = bSum;
+		}
+	}
+
+	// Blur vertically (presumably slower than horizontal)
+	for (int x = 0; x < width; x++) {
+		// Load the line buffer
+		for (int y = 0; y < height; y++) {
+			int index = 3 * (y * width + x);
+			line_buf[3*y+0] = img_f32[index+0];
+			line_buf[3*y+1] = img_f32[index+1];
+			line_buf[3*y+2] = img_f32[index+2];
+		}
+
+		// Blur
+		for (int y = 0; y < height; y++) {
+			float rSum = 0.0;
+			float gSum = 0.0;
+			float bSum = 0.0;
+			for (int dy = 0; dy < kernelSize; dy++) {
+				int yCentered = (int)(y + (dy - ceil((float)kernelSize/2.0)));
+				int sampleY = SWR_MIN(height-1, SWR_MAX(0, yCentered));
+				int sampleIndex = 3 * sampleY;
+
+				float weight = weights[dy];
+				rSum += weight * line_buf[sampleIndex+0];
+				gSum += weight * line_buf[sampleIndex+1];
+				bSum += weight * line_buf[sampleIndex+2];
+			}
+
+			int index = 3 * (y * width + x);
+			img_f32[index+0] = rSum;
+			img_f32[index+1] = gSum;
+			img_f32[index+2] = bSum;
+		}
+	}
+
+	// Convert img_f32 back into img, with linear -> sRGB conversion
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int index = y * width + x;
+			int sampleIndex = 3 * index;
+
+			float r_float = swr_linear_to_srgb(img_f32[sampleIndex + 0]);
+			float g_float = swr_linear_to_srgb(img_f32[sampleIndex + 1]);
+			float b_float = swr_linear_to_srgb(img_f32[sampleIndex + 2]);
+
+			uint8_t r = (uint8_t)(255.0 * r_float);
+			uint8_t g = (uint8_t)(255.0 * g_float);
+			uint8_t b = (uint8_t)(255.0 * b_float);
+			uint32_t color = 0xFF000000 | r << 16 | g << 8 | b;
+			img[index] = color;
+		}
+	}
+
+	free(img_f32);
+	free(line_buf);
 }
 
 struct swr_rect swr_measure_text(struct swr_output *swr, const char *text, int32_t size, uint32_t color, int x, int y) {
