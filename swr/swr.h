@@ -1,11 +1,13 @@
 #ifndef SWR_H
 #define SWR_H
 
-//#define SWR_NO_SIMD
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+#define SWR_GCC_COMPILER_USED
+#endif
 
 #include <assert.h>
 #include <fcntl.h>
-#ifndef SWR_NO_SIMD
+#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h> // Provides _rotr()
 #endif
 #include <math.h>
@@ -24,7 +26,7 @@
 //#define SWR_DEBUG_INFO
 #define SWR_FRAME_TIME_HISTORY_SIZE 512
 
-#ifndef SWR_NO_SIMD
+#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
 #ifdef __clang__
 	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
 #else
@@ -133,7 +135,7 @@ struct swr_float_rect {
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 	float swr__lerp(float a, float b, float t);
-#ifndef SWR_NO_SIMD
+#ifdef __AVX2__
 	void swr__print_128i(__m128i value);
 	void swr__print_256i(__m256i value);
 #endif
@@ -193,7 +195,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	}
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
-#ifdef SWR_NO_SIMD
+#if !defined(__AVX__) // Technically the SIMD version only uses up to SSE4.1, but msvc may be missing that define
 	uint8_t a = (uint8_t)(src >> 24);
 	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
 	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
@@ -249,7 +251,7 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 }
 
 uint32_t swr_argb_to_abgr(uint32_t argb) {
-#ifndef SWR_NO_SIMD
+#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
 	return SWR_ROTR(__builtin_bswap32(argb), 8);
 #else
 	uint32_t red = (argb >> 16) & 0xFF;
@@ -267,7 +269,7 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 }
 
 void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
-#if defined(SWR_NO_SIMD) || defined(__clang__)
+#if !defined(__AVX2__) || (defined(SWR_GCC_COMPILER_USED) && defined(__AVX512F__)) // GCC > clang for avx512 here on my laptop
 	for (int i = 0; i < length; i++) {
 		image[i] = swr_abgr_to_argb(image[i]);
 	}
@@ -301,6 +303,34 @@ void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
 	for (; i < length; i++) {
 		image[i] = swr_abgr_to_argb(image[i]);
 	}
+/*#else
+	// Indexes 3,2,1,0 -> 3,0,1,2
+	int64_t low  = 0x0704050603000102;
+	int64_t high = 0x0f0c0d0e0b08090a;
+
+	//int64_t low  = 0x0405060700010203;
+	//int64_t high = 0x0c0d0e0f08090a0b;
+	const __m128i control_mask128 = _mm_set_epi64x(high, low);
+	const __m256i control_mask = _mm256_set_m128i(control_mask128, control_mask128);
+
+	//const __m512i control_mask = _mm512_broadcast_i64x2(control_mask128);
+
+	// Process 8 pixels at a time
+	int i = 0;
+	//for (; i < length - (length % 8); i += 8) {
+	//length *= 4;
+	for (; i < 4 * (length - (length % 8)); i += 32) {
+		_m256i data_0 = _mm256_loadu_epi8(image + i);
+		//data_0 = _mm256_shuffle_epi8(data_0, control_mask);
+		__m256i data_1 = _mm256_shuffle_epi8(data_0, control_mask);
+		//_mm256_storeu_si256((__m256i*)&image[i], data_0);
+		_mm256_storeu_si256((__m256i*)(image + i), data_1);
+	}
+
+	// Process the remainder (less than 8 pixels)
+	for (; i < length; i++) {
+		image[i] = swr_abgr_to_argb(image[i]);
+	}*/
 #endif
 }
 
@@ -484,7 +514,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
-#ifdef SWR_NO_SIMD
+#ifndef __AVX2__
 	for (int y = 0; y < visible.h; y++) {
 		for (int x = 0; x < visible.w; x++) {
 			int out_x = x + x_offset;
@@ -530,7 +560,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			// 4x ARGB 0xAABBCCDD
 			__m128i dest_128 = _mm_loadu_si128((__m128i const*)(&swr->dest[dest_index]));
 			// 4x ARGB 0x00AA00BB00CC00DD
-			//__m256i dest_color = _mm256_cvtepi8_epi16(dest_128);
 			__m256i dest_color = _mm256_cvtepu8_epi16(dest_128);
 
 			// dest *= 255 - alpha
@@ -1060,7 +1089,7 @@ float swr__lerp(float a, float b, float t) {
 	return a * (1.0F - t) + b*t;
 }
 
-#ifndef SWR_NO_SIMD
+#ifdef __AVX2__
 void swr__print_128i(__m128i value) {
 	uint8_t bytes[16];
 	_mm_storeu_si128((__m128i *)bytes, value);
