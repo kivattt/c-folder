@@ -390,10 +390,14 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 
 	swr->history_min = FLT_MAX;
 	swr->history_max = 0.0F;
+	float avg_time = 0.0F;
+	float divisor = 0.0F;
 	for (int i = 0; i < SWR_FRAME_TIME_HISTORY_SIZE; i++) {
 		if (swr->frame_time_history[i] != 0.0F) {
 			swr->history_min = SWR_MIN(swr->history_min, swr->frame_time_history[i]);
 			swr->history_max = SWR_MAX(swr->history_max, swr->frame_time_history[i]);
+			avg_time += swr->frame_time_history[i];
+			divisor += 1.0F;
 		}
 	}
 
@@ -488,7 +492,7 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 	}
 	swr->frame_time_history_index = (swr->frame_time_history_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
 
-	float fps = 1.0F / diff_seconds;
+	float fps = 1.0F / (avg_time / divisor);
 	char fpsText[32];
 	snprintf(fpsText, 32, "%.1f fps", fps);
 	swr_draw_text(swr, fpsText, size, color, x, y);
