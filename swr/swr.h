@@ -142,6 +142,7 @@ struct swr_float_rect {
 	float swr__sdf_rect(float x, float y, struct swr_float_rect rect, float radius);
 	float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float radius, float thickness_inward, float thickness_outward);
 	float swr__lerp(float a, float b, float t);
+	double swr__time_ms();
 #ifdef __AVX2__
 	void swr__print_128i(__m128i value);
 	void swr__print_256i(__m256i value);
@@ -781,9 +782,7 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 
 void swr_blur_image(uint32_t *img, int width, int height) {
 #ifdef SWR_DEBUG_INFO
-	struct timespec time;
-	clock_gettime(CLOCK_MONOTONIC, &time);
-	double start = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
+	double start = swr__time_ms();
 #endif
 	// float32 RGB
 	float *img_f32 = malloc(sizeof(float) * 3 * (unsigned long)width * (unsigned long)height);
@@ -805,7 +804,10 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			img_f32[outIndex+2] = b;
 		}
 	}
-
+#ifdef SWR_DEBUG_INFO
+	double convert_duration = swr__time_ms() - start;
+	printf("swr: swr_blur_image convert1: %.1fms, ", convert_duration);
+#endif
 	// Compute the kernel
 	const int kernelSize = 101;
 	assert(kernelSize % 2 == 1); // The kernel size should be odd
@@ -822,6 +824,9 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 		weights[dx] /= sumDivisor;
 	}
 
+#ifdef SWR_DEBUG_INFO
+	double horiz_start = swr__time_ms();
+#endif
 	// Blur horizontally
 	for (int y = 0; y < height; y++) {
 		// Load the line buffer
@@ -850,7 +855,14 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			img_f32[index+2] = bSum;
 		}
 	}
+#ifdef SWR_DEBUG_INFO
+	double horiz_duration = swr__time_ms() - horiz_start;
+	printf("horiz: %.1fms, ", horiz_duration);
+#endif
 
+#ifdef SWR_DEBUG_INFO
+	double vert_start = swr__time_ms();
+#endif
 	// Blur vertically (presumably slower than horizontal)
 	for (int x = 0; x < width; x++) {
 		// Load the line buffer
@@ -883,7 +895,14 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			img_f32[index+2] = bSum;
 		}
 	}
+#ifdef SWR_DEBUG_INFO
+	double vert_duration = swr__time_ms() - vert_start;
+	printf("vert: %.1fms, ", vert_duration);
+#endif
 
+#ifdef SWR_DEBUG_INFO
+	double convert2_start = swr__time_ms();
+#endif
 	// Convert img_f32 back into img, with linear -> sRGB conversion
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
@@ -901,14 +920,16 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 			img[index] = color;
 		}
 	}
+#ifdef SWR_DEBUG_INFO
+	double convert2_duration = swr__time_ms() - convert2_start;
+	printf("convert2: %.1fms, ", convert2_duration);
+#endif
 
 	free(img_f32);
 	free(line_buf);
 #ifdef SWR_DEBUG_INFO
-	clock_gettime(CLOCK_MONOTONIC, &time);
-	double end = (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
-	double duration = end - start;
-	printf("swr: swr_blur_image took %f ms\n", duration);
+	double duration = swr__time_ms() - start;
+	printf("total: %.1f ms\n", duration);
 #endif
 }
 
@@ -1319,6 +1340,12 @@ float swr__sdf_rect_outline(float x, float y, struct swr_float_rect rect, float 
 // At t = 0.0, a is returned. At t = 1.0, b is returned.
 float swr__lerp(float a, float b, float t) {
 	return a * (1.0F - t) + b*t;
+}
+
+double swr__time_ms() {
+	struct timespec time;
+	clock_gettime(CLOCK_MONOTONIC, &time);
+	return (double)time.tv_sec * 1000.0 + (double)time.tv_nsec / 1000000.0; // Milliseconds
 }
 
 #ifdef __AVX2__
