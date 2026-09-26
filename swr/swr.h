@@ -297,7 +297,7 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 }
 
 void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
-#if !defined(__AVX2__) || (defined(SWR_GCC_COMPILER_USED) && defined(__AVX512F__)) // GCC > clang for avx512 here on my laptop
+#if !defined(__AVX2__) || (defined(SWR_GCC_COMPILER_USED) && defined(__AVX512F__)) || (defined(__clang__) && !defined(__AVX512F__)) // GCC > clang for avx512 here on my laptop
 	for (int i = 0; i < length; i++) {
 		image[i] = swr_abgr_to_argb(image[i]);
 	}
