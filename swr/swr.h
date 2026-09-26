@@ -172,7 +172,7 @@ void swr_deinitialize(struct swr_output *swr) {
 }
 
 void swr_set_output(struct swr_output *swr, uint32_t *dest, int width, int height) {
-	// We allow swr to be NULL.
+	// We allow swr->dest to be NULL.
 	// Other functions check for NULL and return early instead of here.
 	assert(width >= 0);
 	assert(height >= 0);
@@ -222,12 +222,12 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 
 	short int a = (short int)(src >> 24);
 	__m128i alpha = _mm_set1_epi16(a);
-	__m128i one_minus_alpha = _mm_sub_epi16(_mm_set1_epi16(255), alpha);
+	__m128i alpha_inverted = _mm_sub_epi16(_mm_set1_epi16(255), alpha);
 
 	// src *= alpha
 	src_color = _mm_mullo_epi16(src_color, alpha);
 	// dest *= 255 - alpha
-	dest_color = _mm_mullo_epi16(dest_color, one_minus_alpha);
+	dest_color = _mm_mullo_epi16(dest_color, alpha_inverted);
 	// dest += src
 	dest_color = _mm_add_epi16(dest_color, src_color);
 	// dest /= 255
@@ -492,6 +492,7 @@ void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y
 	}
 	swr->frame_time_history_index = (swr->frame_time_history_index + 1) % SWR_FRAME_TIME_HISTORY_SIZE;
 
+	// Draw FPS text
 	float fps = 1.0F / (avg_time / divisor);
 	char fpsText[32];
 	snprintf(fpsText, 32, "%.1f fps", fps);
@@ -532,7 +533,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	}
 
 	if (color >> 24 == 0xFF) {
-		color = color | 0xFF000000;
+		color |= 0xFF000000;
 
 		int dest_index;
 		for (int y = y_offset; y < visible.h + y_offset; y++) {
@@ -562,13 +563,13 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	unsigned short src_g = (color >>  8) & 0xFF;
 	unsigned short src_b = (color >>  0) & 0xFF;
 
-	const __m256i constant_one_minus_alpha = _mm256_set1_epi16(255 - src_a);
+	const __m256i constant_alpha_inverted = _mm256_set1_epi16(255 - src_a);
 	const __m256i constant_511 = _mm256_set1_epi16(511); // 256*256 - 255*255
 	const __m256i constant_1 = _mm256_set1_epi16(1);
 	const __m256i constant_255 = _mm256_set1_epi16(255);
 	const __m128i constant_output_alpha_mask = _mm_set1_epi32((int32_t)0xFF000000);
 
-	// src *= alpha (important to do this unsigned
+	// src *= alpha (important to do this unsigned)
 	src_r *= (unsigned short)src_a;
 	src_g *= (unsigned short)src_a;
 	src_b *= (unsigned short)src_a;
@@ -595,7 +596,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			__m256i dest_color = _mm256_cvtepu8_epi16(dest_128);
 
 			// dest *= 255 - alpha
-			dest_color = _mm256_mullo_epi16(dest_color, constant_one_minus_alpha);
+			dest_color = _mm256_mullo_epi16(dest_color, constant_alpha_inverted);
 
 			// dest += src
 			dest_color = _mm256_add_epi16(dest_color, src_color);
