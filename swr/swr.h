@@ -297,69 +297,9 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 }
 
 void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
-#if !defined(__AVX2__) || (defined(SWR_GCC_COMPILER_USED) && defined(__AVX512F__)) || (defined(__clang__) && !defined(__AVX512F__)) // GCC > clang for avx512 here on my laptop
 	for (int i = 0; i < length; i++) {
 		image[i] = swr_abgr_to_argb(image[i]);
 	}
-#else // GCC is too bad at autovectorizing this, so I've manually entered what clang would output on my desktop here.
-	// Indexes 3,2,1,0 -> 3,0,1,2
-	int64_t low  = 0x0704050603000102;
-	int64_t high = 0x0F0C0D0E0B08090A;
-	const __m128i control_mask128 = _mm_set_epi64x(high, low);
-	const __m256i control_mask = _mm256_set_m128i(control_mask128, control_mask128);
-
-	// Process 32 pixels at a time
-	int i = 0;
-	for (; i < length - (length % 32); i += 32) {
-		__m256i data_0 = _mm256_loadu_si256((const __m256i*)&image[i]);
-		__m256i data_1 = _mm256_loadu_si256((const __m256i*)&image[i+8]);
-		__m256i data_2 = _mm256_loadu_si256((const __m256i*)&image[i+16]);
-		__m256i data_3 = _mm256_loadu_si256((const __m256i*)&image[i+24]);
-
-		data_0 = _mm256_shuffle_epi8(data_0, control_mask);
-		data_1 = _mm256_shuffle_epi8(data_1, control_mask);
-		data_2 = _mm256_shuffle_epi8(data_2, control_mask);
-		data_3 = _mm256_shuffle_epi8(data_3, control_mask);
-
-		_mm256_storeu_si256((__m256i*)&image[i], data_0);
-		_mm256_storeu_si256((__m256i*)&image[i+8], data_1);
-		_mm256_storeu_si256((__m256i*)&image[i+16], data_2);
-		_mm256_storeu_si256((__m256i*)&image[i+24], data_3);
-	}
-
-	// Process the remainder (less than 32 pixels)
-	for (; i < length; i++) {
-		image[i] = swr_abgr_to_argb(image[i]);
-	}
-/*#else
-	// Indexes 3,2,1,0 -> 3,0,1,2
-	int64_t low  = 0x0704050603000102;
-	int64_t high = 0x0F0C0D0E0B08090A;
-
-	//int64_t low  = 0x0405060700010203;
-	//int64_t high = 0x0C0D0E0F08090A0B;
-	const __m128i control_mask128 = _mm_set_epi64x(high, low);
-	const __m256i control_mask = _mm256_set_m128i(control_mask128, control_mask128);
-
-	//const __m512i control_mask = _mm512_broadcast_i64x2(control_mask128);
-
-	// Process 8 pixels at a time
-	int i = 0;
-	//for (; i < length - (length % 8); i += 8) {
-	//length *= 4;
-	for (; i < 4 * (length - (length % 8)); i += 32) {
-		_m256i data_0 = _mm256_loadu_epi8(image + i);
-		//data_0 = _mm256_shuffle_epi8(data_0, control_mask);
-		__m256i data_1 = _mm256_shuffle_epi8(data_0, control_mask);
-		//_mm256_storeu_si256((__m256i*)&image[i], data_0);
-		_mm256_storeu_si256((__m256i*)(image + i), data_1);
-	}
-
-	// Process the remainder (less than 8 pixels)
-	for (; i < length; i++) {
-		image[i] = swr_abgr_to_argb(image[i]);
-	}*/
-#endif
 }
 
 void swr_convert_image_abgr_to_argb(uint32_t *image, int length) {
