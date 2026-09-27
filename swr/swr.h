@@ -5,9 +5,13 @@
 #define SWR_GCC_COMPILER_USED
 #endif
 
+#if defined(__x86_64__) || defined(_M_X64)
+#define SWR_X86_64
+#endif
+
 #include <assert.h>
 #include <fcntl.h>
-#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
+#if !defined(__TINYC__) && defined(SWR_X86_64)
 #include <immintrin.h> // Provides _rotr()
 #endif
 #include <math.h>
@@ -26,7 +30,7 @@
 //#define SWR_DEBUG_INFO
 #define SWR_FRAME_TIME_HISTORY_SIZE 512
 
-#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
+#if !defined(__TINYC__) && defined(SWR_X86_64)
 #ifdef __clang__
 	#define SWR_ROTR(a, b) __builtin_rotateright32((a), (b))
 #else
@@ -279,15 +283,18 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 }
 
 uint32_t swr_argb_to_abgr(uint32_t argb) {
-#if !defined(__TINYC__) && defined(__x86_64__) || defined(_M_X64)
+#if defined(__TINYC__) && defined(SWR_X86_64)
+	__asm__ volatile (
+		"bswap %0 ;"
+		"ror $8, %0 ;"
+		: "=r" (argb)
+		: "r" (argb)
+	);
+	return argb;
+#elif defined(SWR_X86_64)
 	return SWR_ROTR(__builtin_bswap32(argb), 8);
 #else
-	uint32_t red = (argb >> 16) & 0xFF;
-	uint32_t blue = argb & 0xFF;
-	argb &= 0xFF00FF00;
-	argb |= red;
-	argb |= blue << 16;
-	return argb;
+	return (argb & 0xFF00FF00) | ((argb & 0xFF) << 16) | ((argb >> 16) & 0xFF);
 #endif
 }
 
