@@ -778,7 +778,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
 
 		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgb(255,255,255), 0, 0);
-		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w / 2.0, font1Y);
+		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w * 2.0, font1Y);
 	}
 
 	/*for (int i = 0; i < width * height; i++) {
