@@ -10,6 +10,7 @@
 
 #include "protocols/wlr-layer-shell-client-protocol.h"
 #include "protocols/xdg-output-client-protocol.h"
+#define SWR_IMPLEMENTATION
 #include "taskbar.h"
 
 #define BAR_HEIGHT 30
