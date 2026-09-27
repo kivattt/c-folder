@@ -35,13 +35,13 @@ int taskbar_per_monitor_data_set_font_size(struct Taskbar *tb, int monitor_index
 	m->font1_size = 22 * scale;
 	m->font2_size = 20 * scale;
 
-	FT_Error err1 = fontbmp_generate(&m->font1, m->font1_name, m->font1_size);
+	FT_Error err1 = swr_fontbmp_generate(&m->font1, m->font1_name, m->font1_size);
 	if (err1) {
 		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f, font1_size: %i)\n", scale, m->last_scale, m->font1_size);
 		return err1;
 	}
 
-	FT_Error err2 = fontbmp_generate(&m->font2, m->font2_name, m->font2_size);
+	FT_Error err2 = swr_fontbmp_generate(&m->font2, m->font2_name, m->font2_size);
 	if (err2) {
 		printf("fontbmp_generate returned an error (scale: %f, last_scale: %f, font2_size: %i)\n", scale, m->last_scale, m->font2_size);
 		return err2;
@@ -69,10 +69,10 @@ int taskbar_per_monitor_data_initialize(struct Taskbar *tb, int monitor_index, f
 	m->last_scale = scale;
 
 	m->font1_name = tb->filename_lekton_font;
-	m->font1 = fontbmp_initialize();
+	m->font1 = swr_fontbmp_initialize();
 
 	m->font2_name = tb->filename_lekton_font;
-	m->font2 = fontbmp_initialize();
+	m->font2 = swr_fontbmp_initialize();
 
 	if (tb->debug) {
 		m->debug_string = malloc(64);
@@ -98,8 +98,8 @@ void taskbar_per_monitor_data_deinitialize(struct Taskbar *tb, int monitor_index
 	}
 
 	m->is_initialized = 0;
-	fontbmp_deinitialize(m->font1);
-	fontbmp_deinitialize(m->font2);
+	swr_fontbmp_deinitialize(m->font1);
+	swr_fontbmp_deinitialize(m->font2);
 	free(m->debug_string);
 }
 
@@ -508,7 +508,7 @@ int taskbar_get_hovered_workspace(struct Taskbar *tb, char *monitor_name, int wi
 			continue;
 		}
 
-		struct Rect hitbox = {
+		struct swr_rect hitbox = {
 			.x = workspaceX,
 			.y = 0,
 			.w = workspaceXStep,
@@ -663,13 +663,13 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	float background_scale = 1.0;
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
 	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
-	swr_draw_fill_background(&tb->swr, swr_rgb(0,0,0));
+	swr_draw_fill(&tb->swr, swr_rgb(0,0,0));
 
 	// Draw upper highlight rectangle
 	//int highlightHeight = MAX(1.0, floor(2*background_scale));
 	int highlightHeight = 0; // DEBUGGING
 	int highlightAlpha = 80;
-	struct Rect rect = {
+	struct swr_rect rect = {
 		.x = 0,
 		.y = 0,
 		.w = width,
@@ -713,7 +713,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		sprintf(s, "%d", i+1);
 		uint32_t textColor = TEXT_COLOR;
 
-		struct Rect rect = {
+		struct swr_rect rect = {
 			.x = workspaceX,
 			.y = ceil(highlightHeight + (((float)height - (float)highlightHeight) - (float)workspaceSize) / 2.0),
 			.w = workspaceSize,
@@ -724,7 +724,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		// Draw focus rounded rectangle when workspace is focused
 		if (tb->workspaces[i].focused) {
-			struct Rect r = {
+			struct swr_rect r = {
 				.x = workspaceX - workspaceXInitial,
 				.y = highlightHeight,
 				.w = workspaceXStep,
@@ -745,7 +745,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 
 		// Draw hovered rectangle when workspace is hovered
 		if (tb->hovered_workspace_index == i) {
-			struct Rect hoveredRect = {
+			struct swr_rect hoveredRect = {
 				.x = workspaceX - workspaceXInitial,
 				.y = highlightHeight,
 				.w = workspaceXStep,
@@ -759,7 +759,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		}
 
 		// Draw workspace number
-		struct Rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font2, textColor, 0, 0);
+		struct swr_rect glyphBbox = swr_measure_text_ex(&tb->swr, s, &m->font2, textColor, 0, 0);
 		int xPos = ceil((float)rect.x + (float)rect.w / 2.0 - (float)glyphBbox.w / 2.0 - glyphBbox.x);
 		int yPos = (float)rect.y + (float)rect.h / 2.0 - (float)glyphBbox.h / 2.0 - glyphBbox.y;
 		swr_draw_text_ex(&tb->swr, s, &m->font2, TEXT_DROPSHADOW_COLOR, xPos+1, yPos+1); // DROPSHADOW
@@ -777,7 +777,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		m->max_render_time_last_5s = MAX(renderTimeMs, m->max_render_time_last_5s);
 		sprintf(m->debug_string, "render: %.3fms (5s max: %.3fms)", renderTimeMs, m->max_render_time_last_5s);
 
-		struct Rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgb(255,255,255), 0, 0);
+		struct swr_rect bounds = swr_measure_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgb(255,255,255), 0, 0);
 		swr_draw_text_ex(&tb->swr, m->debug_string, &m->font1, swr_rgba(255,255,255,30), (float)width / 2.0 - (float)bounds.w * 2.0, font1Y);
 	}
 

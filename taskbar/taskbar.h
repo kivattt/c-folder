@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-#include "../sw-render/sw-render.h"
+#include "../swr/swr.h"
 #include "../swayipc/swayipc.h"
 #include "sj.h"
 
@@ -59,11 +59,11 @@ struct TaskbarPerMonitorData {
 
 	float last_scale;
 
-	struct FontBMPFont font1; // Main font
+	struct swr_font font1; // Main font
 	char *font1_name;
 	int font1_size;
 
-	struct FontBMPFont font2; // Smaller font
+	struct swr_font font2; // Smaller font
 	char *font2_name;
 	int font2_size;
 
@@ -91,7 +91,7 @@ struct Taskbar {
 	int debug; // Set to 1 to enable debug stuff
 
 	// Global data
-	struct SWRender swr;
+	struct swr_output swr;
 	struct SwayIPC ipc;
 	char clock[8+1]; // Enough for "01:23:45" (including the null byte)
 	char date_human[20]; // Enough for "Fri May 22" (including the null byte)
