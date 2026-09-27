@@ -2,8 +2,8 @@
 #include <assert.h>
 
 #include <raylib.h>
+#define SWR_IMPLEMENTATION
 #include "../taskbar.h"
-#include "../../sw-render/sw-render.h"
 
 int main() {
 	int image_width = 3840;
