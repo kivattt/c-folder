@@ -14,15 +14,8 @@
 
 #include <X11/extensions/XShm.h>
 
-#include "../taskbar.h"
-
-/*
-#define SWR_DEBUG_INFO
 #define SWR_IMPLEMENTATION
-#include "../../swr.h"
-*/
-
-#include "../../sw-render/sw-render.h"
+#include "../taskbar.h"
 
 struct Renderer {
 	unsigned int width;
