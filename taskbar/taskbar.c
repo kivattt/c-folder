@@ -427,6 +427,8 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 		assert(0);
 	}
 
+	memset(tb, 0, sizeof(struct Taskbar));
+
 	tb->hovered_workspace_index = -1;
 	tb->need_keyboard_focus = 0;
 
@@ -633,6 +635,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	// But for now we just run this update loop on the first monitor frameloop
 	if (monitor_index == 0 && m->frame_number % 120 == 0) {
 		char clock[8+1];
+		memset(&clock, 0, 9);
 		taskbar_clock_string(clock);
 		if (clock[7] == '0' || clock[7] == '5') {
 			memcpy(tb->clock, clock, 8+1);
