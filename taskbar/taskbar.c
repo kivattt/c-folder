@@ -639,7 +639,7 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		taskbar_clock_string(clock);
 		if (clock[7] == '0' || clock[7] == '5') {
 			memcpy(tb->clock, clock, 8+1);
-			m->max_render_time_last_5s = 0.0;
+			m->max_render_time_last_5s = 0.0F;
 		}
 
 		taskbar_date_human_string(tb->date_human);
@@ -647,8 +647,12 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 		taskbar_ram_usage_string(tb->ram_usage);
 		taskbar_disk_space_string(tb->disk_space);
 
-		float percent = 100.0 * taskbar_get_battery_percentage();
-		snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
+		float percent = 100.0F * taskbar_get_battery_percentage();
+		if (percent < 0.0F) { // Error, or no battery found
+			tb->battery_percentage[0] = '\0';
+		} else {
+			snprintf(tb->battery_percentage, 20, "%.1f%%", percent);
+		}
 	}
 
 	m->frame_number += 1;
