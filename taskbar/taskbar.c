@@ -458,27 +458,30 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	/* Note down the command-line args of the currently running swaybg process */
 	memset(tb->swaybg_cmdline, 0, TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS * sizeof(struct TaskbarSwayBGCmdline));
+	system("sleep 1"); // HACK: Need to wait before we can ask swaybg for cmdline args
 	get_swaybg_cmdline_args(tb->swaybg_cmdline);
 
 	// TODO: Load in & blur every background image
 	// TODO: Set correct image per monitor (from some sort of a config file) with correct crop resolution per-monitor like 1920x30
 
 	char *image_path = tb->swaybg_cmdline[0].image_path;
-	int width, height, channels;
-	uint8_t *background = stbi_load(image_path, &width, &height, &channels, 4);
-	if (background != NULL) {
-		printf("Loaded background image at %s\n", image_path);
-		swr_convert_image_abgr_to_argb((uint32_t*)background, width, height);
-		swr_blur_image((uint32_t*)background, width, height);
-	} else {
-		printf("Failed to load background image\n");
-	}
+	if (image_path != NULL) {
+		int width, height, channels;
+		uint8_t *background = stbi_load(image_path, &width, &height, &channels, 4);
+		if (background != NULL) {
+			printf("Loaded background image at %s\n", image_path);
+			swr_convert_image_abgr_to_argb((uint32_t*)background, width, height);
+			swr_blur_image((uint32_t*)background, width, height);
+		} else {
+			printf("Failed to load background image\n");
+		}
 
-	// Set all the monitors backgrounds to this same one
-	for (int i = 0; i < TASKBAR_MAX_MONITORS; i++) {
-		tb->per_monitor_data[i].background_bitmap = background;
-		tb->per_monitor_data[i].background_width = width;
-		tb->per_monitor_data[i].background_height = height;
+		// Set all the monitors backgrounds to this same one
+		for (int i = 0; i < TASKBAR_MAX_MONITORS; i++) {
+			tb->per_monitor_data[i].background_bitmap = background;
+			tb->per_monitor_data[i].background_width = width;
+			tb->per_monitor_data[i].background_height = height;
+		}
 	}
 
 	return 0;
