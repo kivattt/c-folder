@@ -172,7 +172,7 @@ void *taskbar_sway_ipc_thread(void *taskbar) {
 		if (tb->debug) {
 			printf("PACKET: ");
 			fflush(stdout);
-			write(1, packet, packetSize);
+			int _ = write(1, packet, packetSize);
 			fflush(stdout);
 			printf("\n");
 			fflush(stdout);
@@ -318,9 +318,9 @@ void get_swaybg_cmdline_args(struct TaskbarSwayBGCmdline *outputs) {
 				fflush(stdout);
 				for (int i = 0; i < count; i++) {
 					if (fileBuf[i] == 0) {
-						write(1, " ", 1);
+						int _ = write(1, " ", 1);
 					} else {
-						write(1, &fileBuf[i], 1);
+						int _ = write(1, &fileBuf[i], 1);
 					}
 				}
 				printf("\n");
@@ -834,13 +834,13 @@ float taskbar_get_battery_percentage() {
 	struct stat fi;
 	if (fstat(fd, &fi) != -1) {
 		memset(buf, 0, sizeof(buf));
-		read(fd, buf, sizeof(buf));
+		int _ = read(fd, buf, sizeof(buf));
 		close(fd);
 		uint64_t chargeNow = strtoull(buf, NULL, 10);
 
 		fd = open("/sys/class/power_supply/BAT0/charge_full", O_RDONLY);
 		memset(buf, 0, sizeof(buf));
-		read(fd, buf, sizeof(buf));
+		_ = read(fd, buf, sizeof(buf));
 		close(fd);
 		uint64_t chargeFull = strtoull(buf, NULL, 10);
 		return (float)chargeNow / (float)chargeFull;
