@@ -878,7 +878,7 @@ float taskbar_get_battery_percentage() {
 				close(fd);
 
 				uint64_t percent = strtoull(buf, NULL, 10);
-				return (float)percent;
+				return (float)percent / 100.0F;
 			}
 			close(fd);
 		}
