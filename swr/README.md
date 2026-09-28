@@ -18,6 +18,8 @@ gcc, clang and tcc work for compiling this library. If you're using tcc, make su
 
 `swr_draw_fill_background()` was changed to `swr_draw_fill()`
 
+`swr_convert_image_abgr_to_argb` now takes in `int width, int height` instead of `int length`
+
 # Text transparency value frequency
 
 <img src="img/text-alpha-freq.png"></img>

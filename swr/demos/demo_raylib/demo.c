@@ -2,6 +2,7 @@
 #include <raylib.h>
 #include <time.h>
 
+#define SWR_IMPLEMENTATION
 #include "../../swr.h"
 
 int main() {

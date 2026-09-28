@@ -208,7 +208,7 @@ int main() {
 
 		swr_draw_fps(&r, 22, swr_rgb(0,255,0), 0, 0*mouse_x);
 
-		swr_convert_image_argb_to_abgr(r.dest, r.width * r.height);
+		swr_convert_image_argb_to_abgr(r.dest, r.width, r.height);
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
 		XFlush(dpy);

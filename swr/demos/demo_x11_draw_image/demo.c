@@ -103,7 +103,7 @@ int main() {
 		return 1;
 	}
 
-	swr_convert_image_abgr_to_argb((uint32_t*)image, img_width*img_height);
+	swr_convert_image_abgr_to_argb((uint32_t*)image, img_width, img_height);
 
 	Display *dpy = XOpenDisplay(NULL);
 	if (!dpy) {

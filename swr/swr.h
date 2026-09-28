@@ -104,8 +104,8 @@ struct swr_float_rect {
 	uint32_t swr_float_alpha_to_argb(float alpha);
 	uint32_t swr_argb_to_abgr(uint32_t argb);
 	uint32_t swr_abgr_to_argb(uint32_t abgr);
-	void swr_convert_image_argb_to_abgr(uint32_t *image, int length);
-	void swr_convert_image_abgr_to_argb(uint32_t *image, int length);
+	void swr_convert_image_argb_to_abgr(uint32_t *image, int width, int height);
+	void swr_convert_image_abgr_to_argb(uint32_t *image, int width, int height);
 
 	// Drawing functions
 	void swr_draw_fill(struct swr_output *swr, uint32_t color);
@@ -304,15 +304,16 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 	return swr_argb_to_abgr(abgr);
 }
 
-void swr_convert_image_argb_to_abgr(uint32_t *image, int length) {
+void swr_convert_image_argb_to_abgr(uint32_t *image, int width, int height) {
+	int length = width * height;
 	for (int i = 0; i < length; i++) {
 		image[i] = swr_abgr_to_argb(image[i]);
 	}
 }
 
-void swr_convert_image_abgr_to_argb(uint32_t *image, int length) {
+void swr_convert_image_abgr_to_argb(uint32_t *image, int width, int height) {
 	// The conversion works both ways
-	return swr_convert_image_argb_to_abgr(image, length);
+	return swr_convert_image_argb_to_abgr(image, width, height);
 }
 
 void swr_draw_fill(struct swr_output *swr, uint32_t color) {
