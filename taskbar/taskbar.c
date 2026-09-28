@@ -851,22 +851,40 @@ void taskbar_date_numbers_string(char *s) {
 float taskbar_get_battery_percentage() {
 	char buf[64];
 	int fd = open("/sys/class/power_supply/BAT0/charge_now", O_RDONLY);
-	struct stat fi;
-	if (fstat(fd, &fi) != -1) {
-		memset(buf, 0, sizeof(buf));
-		int _ = read(fd, buf, sizeof(buf));
-		close(fd);
-		uint64_t chargeNow = strtoull(buf, NULL, 10);
+	if (fd != -1) {
+		struct stat fi;
+		if (fstat(fd, &fi) != -1) {
+			memset(buf, 0, sizeof(buf));
+			int _ = read(fd, buf, sizeof(buf));
+			close(fd);
+			uint64_t chargeNow = strtoull(buf, NULL, 10);
 
-		fd = open("/sys/class/power_supply/BAT0/charge_full", O_RDONLY);
-		memset(buf, 0, sizeof(buf));
-		_ = read(fd, buf, sizeof(buf));
-		close(fd);
-		uint64_t chargeFull = strtoull(buf, NULL, 10);
-		return (float)chargeNow / (float)chargeFull;
-	};
+			fd = open("/sys/class/power_supply/BAT0/charge_full", O_RDONLY);
+			memset(buf, 0, sizeof(buf));
+			_ = read(fd, buf, sizeof(buf));
+			close(fd);
+			uint64_t chargeFull = strtoull(buf, NULL, 10);
+			return (float)chargeNow / (float)chargeFull;
+		}
 
-	return -1.0; // Error
+		close(fd);
+	} else {
+		fd = open("/sys/class/power_supply/BAT0/capacity", O_RDONLY);
+		if (fd != -1) {
+			struct stat fi;
+			if (fstat(fd, &fi) != -1) {
+				memset(buf, 0, sizeof(buf));
+				int _ = read(fd, buf, sizeof(buf));
+				close(fd);
+
+				uint64_t percent = strtoull(buf, NULL, 10);
+				return (float)percent;
+			}
+			close(fd);
+		}
+	}
+
+	return -1.0F; // Error
 }
 
 // s needs to be atleast 64 bytes
