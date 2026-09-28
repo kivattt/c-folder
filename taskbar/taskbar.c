@@ -444,10 +444,6 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 
 	swr_initialize(&tb->swr);
 
-	/*int channels;
-	tb->background_bitmap = stbi_load(tb->filename_background, &tb->background_width, &tb->background_height, &channels, 4);
-	swr_convert_image_abgr_to_argb((uint32_t*)tb->background_bitmap, tb->background_width * tb->background_height);*/
-
 	memset(tb->per_monitor_data, 0, TASKBAR_MAX_MONITORS * sizeof(struct TaskbarPerMonitorData));
 
 	pthread_mutex_init(&tb->need_handle_input_mutex, NULL);
@@ -463,6 +459,27 @@ int taskbar_initialize(struct Taskbar *tb, char *assets_folder) {
 	/* Note down the command-line args of the currently running swaybg process */
 	memset(tb->swaybg_cmdline, 0, TASKBAR_MAX_SWAYBG_CMDLINE_OUTPUT_ARGS * sizeof(struct TaskbarSwayBGCmdline));
 	get_swaybg_cmdline_args(tb->swaybg_cmdline);
+
+	// TODO: Load in & blur every background image
+	// TODO: Set correct image per monitor (from some sort of a config file) with correct crop resolution per-monitor like 1920x30
+
+	char *image_path = tb->swaybg_cmdline[0].image_path;
+	int width, height, channels;
+	uint8_t *background = stbi_load(image_path, &width, &height, &channels, 4);
+	if (background != NULL) {
+		printf("Loaded background image at %s\n", image_path);
+		swr_convert_image_abgr_to_argb((uint32_t*)background, width, height);
+		swr_blur_image((uint32_t*)background, width, height);
+	} else {
+		printf("Failed to load background image\n");
+	}
+
+	// Set all the monitors backgrounds to this same one
+	for (int i = 0; i < TASKBAR_MAX_MONITORS; i++) {
+		tb->per_monitor_data[i].background_bitmap = background;
+		tb->per_monitor_data[i].background_width = width;
+		tb->per_monitor_data[i].background_height = height;
+	}
 
 	return 0;
 }
@@ -668,9 +685,9 @@ void taskbar_draw(struct Taskbar *tb, int monitor_index, char *monitor_name, uin
 	// Draw background with its own scale
 	//float background_scale = MAX((float)width / tb->background_width, (float)height / tb->background_height);
 	float background_scale = 1.0;
-	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, 0xFFFFFFFF, background_scale, 0, 0);
-	//swr_draw_image_ex(&tb->swr, (uint32_t*)tb->background_bitmap, tb->background_width, tb->background_height, swr_rgb(230,230,230), background_scale, 0, 0);
 	swr_draw_fill(&tb->swr, swr_rgb(0,0,0));
+	//swr_draw_image_ex(&tb->swr, (uint32_t*)m->background_bitmap, m->background_width, m->background_height, swr_rgb(255,255,255), background_scale, -(m->background_width - width) / 2, 3*height - m->background_height);
+	swr_draw_image_ex(&tb->swr, (uint32_t*)m->background_bitmap, m->background_width, m->background_height, swr_rgb(60,0,180), background_scale, -(m->background_width - width) / 2, 3*height - m->background_height);
 
 	// Draw upper highlight rectangle
 	//int highlightHeight = MAX(1.0, floor(2*background_scale));
