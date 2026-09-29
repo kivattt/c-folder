@@ -151,7 +151,7 @@ struct swr_float_rect {
 /* END OF PRIVATE FUNCTIONS */
 
 /* IMPLEMENTATION */
-//#define USE_DURING_DEVELOPMENT // This is just here to prevent my vim syntax highlighting from greying out the implementation.
+#define USE_DURING_DEVELOPMENT // This is just here to prevent my vim syntax highlighting from greying out the implementation.
 #if defined(SWR_IMPLEMENTATION) || defined(USE_DURING_DEVELOPMENT)
 
 // Default font data, all 101.748 kB of it.
@@ -496,17 +496,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
-#ifndef __AVX2__
-	for (int y = 0; y < visible.h; y++) {
-		for (int x = 0; x < visible.w; x++) {
-			int out_x = x + x_offset;
-			int out_y = y + y_offset;
-			int dest_index = out_y * swr->width + out_x;
-			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
-			swr->dest[dest_index] = output_color;
-		}
-	}
-#else
+#if defined(__AVX2__)
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
 	unsigned short src_g = (color >>  8) & 0xFF;
@@ -528,10 +518,9 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	// Four pixels
 	__m256i src_color = _mm256_set1_epi64x(src_color_64);
 
+	int width_remainder = visible.w & 0b11;
+	int width_no_remainder = visible.w - width_remainder;
 	for (int y = 0; y < visible.h; y++) {
-		int width_remainder = visible.w & 0b11;
-		int width_no_remainder = visible.w - width_remainder;
-
 		// Process 4 pixels at a time
 		for (int x = 0; x < width_no_remainder; x += 4) {
 			int out_x = x + x_offset;
@@ -569,6 +558,72 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			int out_y = y_offset + y;
 			int dest_index = out_y * swr->width + out_x;
 
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+#elif defined(__AVX__) || 1
+	const __m128i alpha = _mm_set1_epi16(color >> 24);
+	const __m128i alpha_inverted = _mm_set1_epi16(255 - (color >> 24));
+
+	const uint16_t src_r = (color >> 16) & 0xFF;
+	const uint16_t src_g = (color >>  8) & 0xFF;
+	const uint16_t src_b = (color >>  0) & 0xFF;
+	__m128i src = _mm_set_epi16(0, src_r, src_g, src_b, 0, src_r, src_g, src_b); // alpha unused
+
+	// src *= alpha
+	src = _mm_mullo_epi16(src, _mm_set1_epi16(color >> 24));
+
+	int width_remainder = visible.w & 0b11;
+	int width_no_remainder = visible.w - width_remainder;
+	for (int y = 0; y < visible.h; y++) {
+		int out_y = y + y_offset;
+
+		int dest_index = out_y * swr->width + x_offset;
+		for (int x = dest_index; x < dest_index + visible.w; x += 4) {
+			__m128i data_128 = _mm_loadu_si128((const __m128i*)&swr->dest[dest_index]);
+			__m128i dest = _mm_cvtepi8_epi16(data_128); // Lower bits
+			//dest = _mm_cvtepi8_epi16(_mm_unpackhi_epi64(data_128, data_128)); // Upper bits
+
+			// dest *= 255 - alpha
+			dest = _mm_mullo_epi16(dest, alpha_inverted);
+			// dest += src
+			dest = _mm_add_epi16(dest, src);
+			// dest /= 255
+			dest = _mm_add_epi16(dest, _mm_set1_epi16(511)); // 256*256 - 255*255
+			dest = _mm_srli_epi16(dest, 8);
+			dest = _mm_sub_epi16(dest, _mm_set1_epi16(1));
+			// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+			dest = _mm_min_epu16(dest, _mm_set1_epi16(0xFF));
+
+
+
+
+			__m128i output = _mm_packus_epi16(_mm256_extracti128_si256(dest_color, 0), _mm256_extracti128_si256(dest_color, 1));
+			// Need to set alpha values to 0xFF
+			output = _mm_or_si128(output, constant_output_alpha_mask);
+			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
+
+			//uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			//swr->dest[x] = output_color;
+		}
+
+		// Process the remainder
+		for (int x = 0; x < width_remainder; x++) {
+			int out_x = x_offset + x + width_no_remainder;
+			int out_y = y_offset + y;
+			int dest_index = out_y * swr->width + out_x;
+
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+#else
+	for (int y = 0; y < visible.h; y++) {
+		for (int x = 0; x < visible.w; x++) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+			int dest_index = out_y * swr->width + out_x;
 			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
 			swr->dest[dest_index] = output_color;
 		}
