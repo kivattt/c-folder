@@ -712,13 +712,15 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 		struct swr_rect visible = swr_rect_intersect(buffer_rect, img_rect);
 
 		// FIXME: use these variables to correctly render when x < 0 or y < 0. We may have to divide these by scale.
-		//int x_offset = -MIN(0, x);
-		//int y_offset = -MIN(0, y);
+		int x_offset = -SWR_MIN(0, x);
+		int y_offset = -SWR_MIN(0, y);
 
 		for (int dy = 0; dy < visible.h; dy++) {
 			for (int dx = 0; dx < visible.w; dx++) {
-				int img_sample_x = (int)((float)dx / (float)(width_scaled - 1) * (float)(width - 1));
-				int img_sample_y = (int)((float)dy / (float)(height_scaled - 1) * (float)(height - 1));
+				/*int img_sample_x = (int)((float)dx / (float)(width_scaled - 1) * (float)(width - 1));
+				int img_sample_y = (int)((float)dy / (float)(height_scaled - 1) * (float)(height - 1));*/
+				int img_sample_x = (int)((float)(x_offset + dx) / (float)(width_scaled - 1) * (float)(width - 1));
+				int img_sample_y = (int)((float)(y_offset + dy) / (float)(height_scaled - 1) * (float)(height - 1));
 				assert(img_sample_x >= 0 && img_sample_y >= 0);
 				assert(img_sample_x < width && img_sample_y < height);
 
