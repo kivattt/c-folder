@@ -547,7 +547,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			dest_color = _mm256_and_si256(dest_color, constant_255);
 
 			__m128i output = _mm_packus_epi16(_mm256_extracti128_si256(dest_color, 0), _mm256_extracti128_si256(dest_color, 1));
-			// Need to set alpha values to 0xFF
+			// Set alpha values to 0xFF
 			output = _mm_or_si128(output, constant_output_alpha_mask);
 			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
 		}
@@ -566,7 +566,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	const __m128i alpha = _mm_set1_epi16((short)(color >> 24));
 	const __m128i alpha_inverted = _mm_set1_epi16((short)(255 - (color >> 24)));
 
-
 	const int16_t src_r = (color >> 16) & 0xFF;
 	const int16_t src_g = (color >>  8) & 0xFF;
 	const int16_t src_b = (color >>  0) & 0xFF;
@@ -584,7 +583,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			__m128i data_128 = _mm_loadu_si128((const __m128i*)&swr->dest[x]);
 
 			// Lower bits
-			__m128i dest_lower = _mm_cvtepi8_epi16(data_128);
+			__m128i dest_lower = _mm_cvtepu8_epi16(data_128);
 			{
 				// dest *= 255 - alpha
 				dest_lower = _mm_mullo_epi16(dest_lower, alpha_inverted);
@@ -599,7 +598,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			}
 
 			// Upper bits
-			__m128i dest_upper = _mm_cvtepi8_epi16(_mm_unpackhi_epi64(data_128, data_128));
+			__m128i dest_upper = _mm_cvtepu8_epi16(_mm_unpackhi_epi64(data_128, data_128));
 			{
 				// dest *= 255 - alpha
 				dest_upper = _mm_mullo_epi16(dest_upper, alpha_inverted);
@@ -615,7 +614,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 
 			__m128i output = _mm_packus_epi16(dest_lower, dest_upper);
 
-			// Need to set alpha values to 0xFF
+			// Set alpha values to 0xFF
 			output = _mm_or_si128(output, _mm_set1_epi32((int32_t)0xFF000000));
 			_mm_storeu_si128((__m128i*)(&swr->dest[x]), output);
 		}
