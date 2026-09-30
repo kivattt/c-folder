@@ -496,7 +496,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
-#if defined(__AVX2__) && 0
+#if defined(__AVX2__)
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
 	unsigned short src_g = (color >>  8) & 0xFF;
@@ -562,7 +562,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			swr->dest[dest_index] = output_color;
 		}
 	}
-#elif defined(__AVX__) || 1
+#elif defined(__AVX__)
 	const __m128i alpha = _mm_set1_epi16((short)(color >> 24));
 	const __m128i alpha_inverted = _mm_set1_epi16((short)(255 - (color >> 24)));
 
