@@ -496,7 +496,71 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
-#if defined(__AVX2__)
+#if defined(__AVX512F__)
+	short int src_a = (short int)((color >> 24) & 0xFF);
+	unsigned short src_r = (color >> 16) & 0xFF;
+	unsigned short src_g = (color >>  8) & 0xFF;
+	unsigned short src_b = (color >>  0) & 0xFF;
+
+	const __m512i constant_alpha_inverted = _mm512_set1_epi16(255 - src_a);
+	const __m512i constant_511 = _mm512_set1_epi16(511); // 256*256 - 255*255
+	const __m512i constant_1 = _mm512_set1_epi16(1);
+	const __m512i constant_255 = _mm512_set1_epi16(255);
+	const __m256i constant_output_alpha_mask = _mm256_set1_epi32((int32_t)0xFF000000);
+
+	// src *= alpha (important to do this unsigned)
+	src_r *= (unsigned short)src_a;
+	src_g *= (unsigned short)src_a;
+	src_b *= (unsigned short)src_a;
+
+	// 4 x 16 bit values
+	int64_t src_color_64 = ((int64_t)src_r << 32) | ((int64_t)src_g << 16) | src_b;
+	// Eight pixels
+	__m512i src_color = _mm512_set1_epi64(src_color_64);
+
+	int width_remainder = visible.w & 0b111;
+	int width_no_remainder = visible.w - width_remainder;
+	for (int y = 0; y < visible.h; y++) {
+		// Process 8 pixels at a time
+		for (int x = 0; x < width_no_remainder; x += 8) {
+			int out_x = x + x_offset;
+			int out_y = y + y_offset;
+			int dest_index = out_y * swr->width + out_x;
+
+			// eight pixels (alpha unused)
+			// 8x ARGB 0xAABBCCDD
+			__m256i dest_256 = _mm256_loadu_si256((__m256i const*)&swr->dest[dest_index]);
+			// 8x ARGB 0x00AA00BB00CC00DD
+			__m512i dest_color = _mm512_cvtepu8_epi16(dest_256);
+
+			// dest *= 255 - alpha
+			dest_color = _mm512_mullo_epi16(dest_color, constant_alpha_inverted);
+			// dest += src
+			dest_color = _mm512_add_epi16(dest_color, src_color);
+			// dest /= 255
+			dest_color = _mm512_add_epi16(dest_color, constant_511); // TODO: remove this and simply add 511 to src_color?
+			dest_color = _mm512_srli_epi16(dest_color, 8);
+			dest_color = _mm512_sub_epi16(dest_color, constant_1);
+			// Clamp to 0xFF. This is required because _mm256_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+			dest_color = _mm512_and_si512(dest_color, constant_255);
+
+			__m256i output = _mm512_cvtepi16_epi8(dest_color);
+			// Set alpha values to 0xFF
+			output = _mm256_or_si256(output, constant_output_alpha_mask);
+			_mm256_storeu_si256((__m256i*)&swr->dest[dest_index], output);
+		}
+
+		// Process the remainder
+		for (int x = 0; x < width_remainder; x++) {
+			int out_x = x_offset + x + width_no_remainder;
+			int out_y = y_offset + y;
+			int dest_index = out_y * swr->width + out_x;
+
+			uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
+			swr->dest[dest_index] = output_color;
+		}
+	}
+#elif defined(__AVX2__)
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
 	unsigned short src_g = (color >>  8) & 0xFF;
