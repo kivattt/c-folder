@@ -284,7 +284,7 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 }
 
 uint32_t swr_argb_to_abgr(uint32_t argb) {
-#if defined(__TINYC__) && defined(SWR_X86_64)
+#if defined(__TINYC__) && defined(SWR_X86_64) || 1
 	__asm__ volatile (
 		"bswap %0 ;"
 		"ror $8, %0 ;"
@@ -496,7 +496,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		return;
 	}
 
-#if defined(__AVX2__)
+#if defined(__AVX2__) && 0
 	short int src_a = (short int)((color >> 24) & 0xFF);
 	unsigned short src_r = (color >> 16) & 0xFF;
 	unsigned short src_g = (color >>  8) & 0xFF;
@@ -563,16 +563,16 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		}
 	}
 #elif defined(__AVX__) || 1
-	const __m128i alpha = _mm_set1_epi16(color >> 24);
-	const __m128i alpha_inverted = _mm_set1_epi16(255 - (color >> 24));
+	const __m128i alpha = _mm_set1_epi16((short)(color >> 24));
+	const __m128i alpha_inverted = _mm_set1_epi16((short)(255 - (color >> 24)));
 
-	const uint16_t src_r = (color >> 16) & 0xFF;
-	const uint16_t src_g = (color >>  8) & 0xFF;
-	const uint16_t src_b = (color >>  0) & 0xFF;
+
+	const int16_t src_r = (color >> 16) & 0xFF;
+	const int16_t src_g = (color >>  8) & 0xFF;
+	const int16_t src_b = (color >>  0) & 0xFF;
 	__m128i src = _mm_set_epi16(0, src_r, src_g, src_b, 0, src_r, src_g, src_b); // alpha unused
-
 	// src *= alpha
-	src = _mm_mullo_epi16(src, _mm_set1_epi16(color >> 24));
+	src = _mm_mullo_epi16(src, alpha);
 
 	int width_remainder = visible.w & 0b11;
 	int width_no_remainder = visible.w - width_remainder;
@@ -580,32 +580,44 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 		int out_y = y + y_offset;
 
 		int dest_index = out_y * swr->width + x_offset;
-		for (int x = dest_index; x < dest_index + visible.w; x += 4) {
-			__m128i data_128 = _mm_loadu_si128((const __m128i*)&swr->dest[dest_index]);
-			__m128i dest = _mm_cvtepi8_epi16(data_128); // Lower bits
-			//dest = _mm_cvtepi8_epi16(_mm_unpackhi_epi64(data_128, data_128)); // Upper bits
+		for (int x = dest_index; x < dest_index + width_no_remainder; x += 4) {
+			__m128i data_128 = _mm_loadu_si128((const __m128i*)&swr->dest[x]);
 
-			// dest *= 255 - alpha
-			dest = _mm_mullo_epi16(dest, alpha_inverted);
-			// dest += src
-			dest = _mm_add_epi16(dest, src);
-			// dest /= 255
-			dest = _mm_add_epi16(dest, _mm_set1_epi16(511)); // 256*256 - 255*255
-			dest = _mm_srli_epi16(dest, 8);
-			dest = _mm_sub_epi16(dest, _mm_set1_epi16(1));
-			// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
-			dest = _mm_min_epu16(dest, _mm_set1_epi16(0xFF));
+			// Lower bits
+			__m128i dest_lower = _mm_cvtepi8_epi16(data_128);
+			{
+				// dest *= 255 - alpha
+				dest_lower = _mm_mullo_epi16(dest_lower, alpha_inverted);
+				// dest += src
+				dest_lower = _mm_add_epi16(dest_lower, src);
+				// dest /= 255
+				dest_lower = _mm_add_epi16(dest_lower, _mm_set1_epi16(511)); // 256*256 - 255*255
+				dest_lower = _mm_srli_epi16(dest_lower, 8);
+				dest_lower = _mm_sub_epi16(dest_lower, _mm_set1_epi16(1));
+				// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+				dest_lower = _mm_min_epu16(dest_lower, _mm_set1_epi16(0xFF));
+			}
 
+			// Upper bits
+			__m128i dest_upper = _mm_cvtepi8_epi16(_mm_unpackhi_epi64(data_128, data_128));
+			{
+				// dest *= 255 - alpha
+				dest_upper = _mm_mullo_epi16(dest_upper, alpha_inverted);
+				// dest += src
+				dest_upper = _mm_add_epi16(dest_upper, src);
+				// dest /= 255
+				dest_upper = _mm_add_epi16(dest_upper, _mm_set1_epi16(511)); // 256*256 - 255*255
+				dest_upper = _mm_srli_epi16(dest_upper, 8);
+				dest_upper = _mm_sub_epi16(dest_upper, _mm_set1_epi16(1));
+				// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
+				dest_upper = _mm_min_epu16(dest_upper, _mm_set1_epi16(0xFF));
+			}
 
+			__m128i output = _mm_packus_epi16(dest_lower, dest_upper);
 
-
-			__m128i output = _mm_packus_epi16(_mm256_extracti128_si256(dest_color, 0), _mm256_extracti128_si256(dest_color, 1));
 			// Need to set alpha values to 0xFF
-			output = _mm_or_si128(output, constant_output_alpha_mask);
-			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
-
-			//uint32_t output_color = swr_alpha_blend(swr->dest[dest_index], color);
-			//swr->dest[x] = output_color;
+			output = _mm_or_si128(output, _mm_set1_epi32((int32_t)0xFF000000));
+			_mm_storeu_si128((__m128i*)(&swr->dest[x]), output);
 		}
 
 		// Process the remainder
