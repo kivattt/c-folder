@@ -502,8 +502,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	unsigned short src_b = (color >>  0) & 0xFF;
 
 	const __m512i constant_alpha_inverted = _mm512_set1_epi16(255 - src_a);
-	const __m512i constant_511 = _mm512_set1_epi16(511); // 256*256 - 255*255
-	const __m512i constant_1 = _mm512_set1_epi16(1);
 	const __m512i constant_255 = _mm512_set1_epi16(255);
 	const __m256i constant_output_alpha_mask = _mm256_set1_epi32((int32_t)0xFF000000);
 
@@ -516,6 +514,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	int64_t src_color_64 = ((int64_t)src_r << 32) | ((int64_t)src_g << 16) | src_b;
 	// Eight pixels
 	__m512i src_color = _mm512_set1_epi64(src_color_64);
+	src_color = _mm512_add_epi16(src_color, constant_255); // To make /= 255 work
 
 	int width_remainder = visible.w & 0b111;
 	int width_no_remainder = visible.w - width_remainder;
@@ -537,9 +536,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			// dest += src
 			dest_color = _mm512_add_epi16(dest_color, src_color);
 			// dest /= 255
-			dest_color = _mm512_add_epi16(dest_color, constant_511); // TODO: remove this and simply add 511 to src_color?
 			dest_color = _mm512_srli_epi16(dest_color, 8);
-			dest_color = _mm512_sub_epi16(dest_color, constant_1);
 			// Clamp to 0xFF. This is required because _mm256_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 			dest_color = _mm512_and_si512(dest_color, constant_255);
 
@@ -566,8 +563,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	unsigned short src_b = (color >>  0) & 0xFF;
 
 	const __m256i constant_alpha_inverted = _mm256_set1_epi16(255 - src_a);
-	const __m256i constant_511 = _mm256_set1_epi16(511); // 256*256 - 255*255
-	const __m256i constant_1 = _mm256_set1_epi16(1);
 	const __m256i constant_255 = _mm256_set1_epi16(255);
 	const __m128i constant_output_alpha_mask = _mm_set1_epi32((int32_t)0xFF000000);
 
@@ -580,6 +575,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	int64_t src_color_64 = ((int64_t)src_r << 32) | ((int64_t)src_g << 16) | src_b;
 	// Four pixels
 	__m256i src_color = _mm256_set1_epi64x(src_color_64);
+	src_color = _mm256_add_epi16(src_color, constant_255);
 
 	int width_remainder = visible.w & 0b11;
 	int width_no_remainder = visible.w - width_remainder;
@@ -603,9 +599,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			dest_color = _mm256_add_epi16(dest_color, src_color);
 
 			// dest /= 255
-			dest_color = _mm256_add_epi16(dest_color, constant_511); // TODO: remove this and simply add 511 to src_color?
 			dest_color = _mm256_srli_epi16(dest_color, 8);
-			dest_color = _mm256_sub_epi16(dest_color, constant_1);
 			// Clamp to 0xFF. This is required because _mm256_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 			dest_color = _mm256_and_si256(dest_color, constant_255);
 
@@ -635,6 +629,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	__m128i src = _mm_set_epi16(0, src_r, src_g, src_b, 0, src_r, src_g, src_b); // alpha unused
 	// src *= alpha
 	src = _mm_mullo_epi16(src, alpha);
+	src = _mm_add_epi16(src, _mm_set1_epi16(255)); // To make /= 255 work
 
 	int width_remainder = visible.w & 0b11;
 	int width_no_remainder = visible.w - width_remainder;
@@ -653,9 +648,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 				// dest += src
 				dest_lower = _mm_add_epi16(dest_lower, src);
 				// dest /= 255
-				dest_lower = _mm_add_epi16(dest_lower, _mm_set1_epi16(511)); // 256*256 - 255*255
 				dest_lower = _mm_srli_epi16(dest_lower, 8);
-				dest_lower = _mm_sub_epi16(dest_lower, _mm_set1_epi16(1));
 				// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 				dest_lower = _mm_min_epu16(dest_lower, _mm_set1_epi16(0xFF));
 			}
@@ -668,9 +661,7 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 				// dest += src
 				dest_upper = _mm_add_epi16(dest_upper, src);
 				// dest /= 255
-				dest_upper = _mm_add_epi16(dest_upper, _mm_set1_epi16(511)); // 256*256 - 255*255
 				dest_upper = _mm_srli_epi16(dest_upper, 8);
-				dest_upper = _mm_sub_epi16(dest_upper, _mm_set1_epi16(1));
 				// Clamp to 0xFF. This is required because _mm_mullo_epi16 does a SignExtend32() which can mess with the upper bits
 				dest_upper = _mm_min_epu16(dest_upper, _mm_set1_epi16(0xFF));
 			}
