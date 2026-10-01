@@ -208,13 +208,7 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	}
 
 	// 48.3% of branches go here for text rendering (see img/text-alpha-freq.png)
-#if !defined(__AVX__) // Technically the SIMD version only uses up to SSE4.1, but msvc may be missing that define
-	uint8_t a = (uint8_t)(src >> 24);
-	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
-	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
-	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
-	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
-#else
+#if defined(__AVX__) // Actually only uses up to SSE4.1, but msvc may be missing that define
 	short int src_r = (src >> 16) & 0xFF;
 	short int src_g = (src >>  8) & 0xFF;
 	short int src_b = (src >>  0) & 0xFF;
@@ -247,6 +241,12 @@ uint32_t swr_alpha_blend(uint32_t dest, uint32_t src) {
 	result |= (uint32_t)(_mm_extract_epi16(dest_color, 0)) <<  0; // blue
 
 	return result;
+#else
+	uint8_t a = (uint8_t)(src >> 24);
+	uint8_t r = (uint8_t)((((src >> 16) & 0xFF) * a) / 255 + (((dest >> 16) & 0xFF) * (255 - a)) / 255);
+	uint8_t g = (uint8_t)((((src >>  8) & 0xFF) * a) / 255 + (((dest >>  8) & 0xFF) * (255 - a)) / 255);
+	uint8_t b = (uint8_t)((((src >>  0) & 0xFF) * a) / 255 + (((dest >>  0) & 0xFF) * (255 - a)) / 255);
+	return 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
 #endif
 }
 
