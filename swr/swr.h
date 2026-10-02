@@ -481,8 +481,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	}
 
 	if (color >> 24 == 0xFF) {
-		color |= 0xFF000000;
-
 		int dest_index;
 		for (int y = y_offset; y < visible.h + y_offset; y++) {
 			dest_index = y * swr->width + x_offset;
