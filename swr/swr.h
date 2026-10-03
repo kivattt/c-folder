@@ -578,12 +578,37 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 	int width_remainder = visible.w & 0b11;
 	int width_no_remainder = visible.w - width_remainder;
 	for (int y = 0; y < visible.h; y++) {
-		// Process 4 pixels at a time
-		for (int x = 0; x < width_no_remainder; x += 4) {
-			int out_x = x + x_offset;
-			int out_y = y + y_offset;
-			int dest_index = out_y * swr->width + out_x;
+		int out_y = y + y_offset;
+		int dest_index = out_y * swr->width + x_offset;
 
+		if (width_no_remainder > 0) {
+			uint32_t *start = &swr->dest[dest_index];
+			uint32_t *end = &swr->dest[dest_index + width_no_remainder];
+			// Process 4 pixels at a time
+			__asm__ volatile(
+				"1: ;" // loop label
+				"vpmovzxbw (%0), %%ymm0 ;" // load 128 bits into 256 bit register ymm0 (8bit -> 16bit)
+				"vpmullw      %%ymm0, %3, %%ymm0 ;" // out *= 255 - alpha
+				"vpaddw       %%ymm0, %2, %%ymm0 ;" // out += src_color
+				"vpsrlw       $8, %%ymm0, %%ymm0 ;"  // out >>= 8
+				"vextracti128 $1, %%ymm0, %%xmm1 ;" // xmm1 = upper bits of ymm0, xmm0 = lower bits of ymm0
+				"vpackuswb    %%xmm1, %%xmm0, %%xmm0 ;" // convert 16bit back to 8bit
+				"vpor         %4, %%xmm0, %%xmm0 ;" // out |= 0xFF000000, set alpha channel to 0xFF
+				"vmovdqu      %%xmm0, (%0) ;" // write 128 bits
+				"add $16, %0 ;" // start += 4 * sizeof(uint32_t)
+				"cmp %1, %0 ;"
+				"jl 1b ;" // 1(b)ackward
+				: "+r"(start) // %0 should this be a register?
+				: "r"(end),     // %1
+				"x"(src_color), // %2
+				"x"(constant_alpha_inverted),   // %3
+				"x"(constant_output_alpha_mask) // %4
+				: "xmm0", "xmm1", "ymm0", "memory"
+			);
+		}
+
+		// Process 4 pixels at a time
+		/*for (int x = 0; x < width_no_remainder; x += 4) {
 			// four pixels (alpha unused)
 			// 4x ARGB 0xAABBCCDD
 			__m128i dest_128 = _mm_loadu_si128((__m128i const*)(&swr->dest[dest_index]));
@@ -605,7 +630,9 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 			// Set alpha values to 0xFF
 			output = _mm_or_si128(output, constant_output_alpha_mask);
 			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
-		}
+
+			dest_index += 4;
+		}*/
 
 		// Process the remainder
 		for (int x = 0; x < width_remainder; x++) {
