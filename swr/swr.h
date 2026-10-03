@@ -590,10 +590,14 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 				"vpmovzxbw (%0), %%ymm0 ;" // load 128 bits into 256 bit register ymm0 (8bit -> 16bit)
 				"vpmullw      %%ymm0, %3, %%ymm0 ;" // out *= 255 - alpha
 				"vpaddw       %%ymm0, %2, %%ymm0 ;" // out += src_color
+
+				// Since we added 255 to src_color earlier, this essentially becomes
+				// a divide by 255 instead of 256.
 				"vpsrlw       $8, %%ymm0, %%ymm0 ;"  // out >>= 8
+
 				"vextracti128 $1, %%ymm0, %%xmm1 ;" // xmm1 = upper bits of ymm0, xmm0 = lower bits of ymm0
 				"vpackuswb    %%xmm1, %%xmm0, %%xmm0 ;" // convert 16bit back to 8bit
-				"vpor         %4, %%xmm0, %%xmm0 ;" // out |= 0xFF000000, set alpha channel to 0xFF
+				"vpor         %4, %%xmm0, %%xmm0 ;" // out |= 0xFF000000, set ARGB alpha channel to 0xFF
 				"vmovdqu      %%xmm0, (%0) ;" // write 128 bits
 				"add $16, %0 ;" // start += 4 * sizeof(uint32_t)
 				"cmp %1, %0 ;"
@@ -606,33 +610,6 @@ void swr_draw_rectangle(struct swr_output *swr, struct swr_rect rect, uint32_t c
 				: "xmm0", "xmm1", "ymm0", "memory"
 			);
 		}
-
-		// Process 4 pixels at a time
-		/*for (int x = 0; x < width_no_remainder; x += 4) {
-			// four pixels (alpha unused)
-			// 4x ARGB 0xAABBCCDD
-			__m128i dest_128 = _mm_loadu_si128((__m128i const*)(&swr->dest[dest_index]));
-			// 4x ARGB 0x00AA00BB00CC00DD
-			__m256i dest_color = _mm256_cvtepu8_epi16(dest_128);
-
-			// dest *= 255 - alpha
-			dest_color = _mm256_mullo_epi16(dest_color, constant_alpha_inverted);
-
-			// dest += src
-			dest_color = _mm256_add_epi16(dest_color, src_color);
-
-			// dest /= 255
-			dest_color = _mm256_srli_epi16(dest_color, 8);
-			// Clamp to 0xFF. This is required because _mm256_mullo_epi16 does a SignExtend32() which can mess with the upper bits
-			dest_color = _mm256_and_si256(dest_color, constant_255);
-
-			__m128i output = _mm_packus_epi16(_mm256_extracti128_si256(dest_color, 0), _mm256_extracti128_si256(dest_color, 1));
-			// Set alpha values to 0xFF
-			output = _mm_or_si128(output, constant_output_alpha_mask);
-			_mm_storeu_si128((__m128i*)(&swr->dest[dest_index]), output);
-
-			dest_index += 4;
-		}*/
 
 		// Process the remainder
 		for (int x = 0; x < width_remainder; x++) {
