@@ -11,6 +11,9 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <float.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #if defined(SWR_X86_64) && !defined(__TINYC__)
 #include <immintrin.h> // Provides _rotr()
 #endif
@@ -23,9 +26,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <float.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 //#define SWR_DEBUG_INFO
 #define SWR_FRAME_TIME_HISTORY_SIZE 512
