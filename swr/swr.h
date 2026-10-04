@@ -11,7 +11,7 @@
 
 #include <assert.h>
 #include <fcntl.h>
-#if !defined(__TINYC__) && defined(SWR_X86_64)
+#if defined(SWR_X86_64) && !defined(__TINYC__)
 #include <immintrin.h> // Provides _rotr()
 #endif
 #include <math.h>
