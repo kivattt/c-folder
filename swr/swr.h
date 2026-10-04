@@ -283,7 +283,7 @@ uint32_t swr_float_alpha_to_argb(float alpha) {
 }
 
 uint32_t swr_argb_to_abgr(uint32_t argb) {
-#if defined(__TINYC__) && defined(SWR_X86_64) || 1
+#if defined(__TINYC__) && defined(SWR_X86_64)
 	__asm__ volatile (
 		"bswap %0 ;"
 		"ror $8, %0 ;"
@@ -306,7 +306,7 @@ uint32_t swr_abgr_to_argb(uint32_t abgr) {
 void swr_convert_image_argb_to_abgr(uint32_t *image, int width, int height) {
 	int length = width * height;
 	for (int i = 0; i < length; i++) {
-		image[i] = swr_abgr_to_argb(image[i]);
+		image[i] = swr_argb_to_abgr(image[i]);
 	}
 }
 
@@ -324,6 +324,8 @@ void swr_draw_fill(struct swr_output *swr, uint32_t color) {
 }
 
 void swr_draw_fps(struct swr_output *swr, int size, uint32_t color, int x, int y) {
+	swr__crash_if_null(swr);
+
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	long long now = ((long long)ts.tv_sec * 1000000000LL) + ts.tv_nsec;
