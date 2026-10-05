@@ -10,11 +10,8 @@
 #include <sys/shm.h>
 #include <X11/extensions/XShm.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#define SWR_IMPLEMENTATION
-#include "../swr/swr.h"
+#define IMG_IMPLEMENTATION
+#include "img.h"
 
 void usage() {
 	printf("Usage: img <image file>\n");
@@ -102,18 +99,12 @@ int main(int argc, char **argv) {
 	}
 
 	char *filename = argv[1];
-	printf("%s\n", filename);
 
-	int img_width, img_height, img_channels;
-	uint8_t *image = stbi_load(filename, &img_width, &img_height, &img_channels, 4);
-	if (image == NULL) {
-		printf("Failed to load %s\n", filename);
-		return 1;
+	struct img_application app;
+	int err = img_initialize(&app, filename);
+	if (err) {
+		return err;
 	}
-
-	struct swr_output r;
-	swr_initialize(&r);
-	swr_convert_image_abgr_to_argb((uint32_t*)image, img_width, img_height);
 
 	Display *dpy = XOpenDisplay(NULL);
 	if (!dpy) {
@@ -149,8 +140,6 @@ int main(int argc, char **argv) {
 	int running = 1;
 	int mouse_x = 0;
 	int mouse_y = 0;
-	int show_fps = 0;
-	float scale = 1.0;
 	KeySym keysym;
 
 	while (running) {
@@ -178,16 +167,16 @@ int main(int argc, char **argv) {
 					switch (keysym) {
 						case XK_Shift_L:
 						case XK_Shift_R:
-							show_fps = !show_fps;
+							img_input(&app, IMG_PressShift, mouse_x, mouse_y);
 							break;
 						case XK_space:
-							scale = 1.0;
+							img_input(&app, IMG_PressSpace, mouse_x, mouse_y);
 							break;
 						case XK_plus:
-							scale += 0.1;
+							img_input(&app, IMG_PressPlus, mouse_x, mouse_y);
 							break;
 						case XK_minus:
-							scale -= 0.1;
+							img_input(&app, IMG_PressMinus, mouse_x, mouse_y);
 							break;
 					}
 
@@ -195,19 +184,13 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
-		swr_draw_fill(&r, swr_rgb(50,50,50));
-		//swr_draw_image(&r, (uint32_t*)image, img_width, img_height, mouse_x, mouse_y);
-		swr_draw_image_ex(&r, (uint32_t*)image, img_width, img_height, swr_rgb(255,255,255), scale, mouse_x, mouse_y);
-
-		swr_draw_fps(&r, 22, swr_rgb(255,255,255), 0, 0, show_fps);
+		img_draw(&app, renderer.pixels, (int)renderer.width, (int)renderer.height);
 
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
 		XFlush(dpy);
 	}
 
-	swr_deinitialize(&r);
-	stbi_image_free(image);
+	img_deinitialize(&app);
 	return 0;
 }

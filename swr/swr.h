@@ -1070,6 +1070,7 @@ struct swr_font swr_fontbmp_initialize() {
 #endif
 	struct swr_font out;
 	out.glyph_list = malloc(sizeof(struct swr_glyph_bitmap) * 256);
+	assert(out.glyph_list != NULL);
 	out.internal_bitmap_data = NULL;
 	return out;
 }
@@ -1110,6 +1111,7 @@ FT_Error swr_fontbmp_generate(struct swr_font *font, const char *font_filename, 
 // Returns non-zero on failure
 FT_Error swr_fontbmp_generate_from_memory(struct swr_font *font, const unsigned char *font_data, size_t font_data_size, const int32_t font_height_pixels) {
 	assert(font != NULL);
+	assert(font->glyph_list != NULL);
 
 #ifdef SWR_DEBUG_INFO
 	struct timespec time;
