@@ -149,6 +149,9 @@ int main(int argc, char **argv) {
 	int running = 1;
 	int mouse_x = 0;
 	int mouse_y = 0;
+	int show_fps = 0;
+	float scale = 1.0;
+	KeySym keysym;
 
 	while (running) {
 		while (XPending(dpy)) {
@@ -170,12 +173,34 @@ int main(int argc, char **argv) {
 						resize_renderer(dpy, visual, (unsigned int)depth, &renderer, (unsigned int)e.xconfigure.width, (unsigned int)e.xconfigure.height);
 					}
 					break;
+				case KeyPress:
+					keysym = XLookupKeysym(&e.xkey, 0);
+					switch (keysym) {
+						case XK_Shift_L:
+						case XK_Shift_R:
+							show_fps = !show_fps;
+							break;
+						case XK_space:
+							scale = 1.0;
+							break;
+						case XK_plus:
+							scale += 0.1;
+							break;
+						case XK_minus:
+							scale -= 0.1;
+							break;
+					}
+
+					break;
 			}
 		}
 
 		swr_set_output(&r, renderer.pixels, (int)renderer.width, (int)renderer.height);
 		swr_draw_fill(&r, swr_rgb(50,50,50));
-		swr_draw_image(&r, (uint32_t*)image, img_width, img_height, 0, 0);
+		//swr_draw_image(&r, (uint32_t*)image, img_width, img_height, mouse_x, mouse_y);
+		swr_draw_image_ex(&r, (uint32_t*)image, img_width, img_height, swr_rgb(255,255,255), scale, mouse_x, mouse_y);
+
+		swr_draw_fps(&r, 22, swr_rgb(255,255,255), 0, 0, show_fps);
 
 		XShmPutImage(dpy, window, DefaultGC(dpy, screen), renderer.image, 0, 0, 0, 0, renderer.width, renderer.height, False);
 		XSync(dpy, False);
