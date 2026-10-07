@@ -9,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define SWR_DEBUG_INFO
 #define SWR_IMPLEMENTATION
 #include "../swr/swr.h"
 
@@ -56,6 +57,13 @@ int img_initialize(struct img_application *app, char *image_filename) {
 		return 1;
 	}
 	swr_convert_image_abgr_to_argb(app->image, app->image_width, app->image_height);
+	double start = swr__time_ms();
+	//swr_blur_image(app->image, app->image_width, app->image_height);
+	//for (int i = 0; i < 10; i++)
+	swr_blur_image2(app->image, app->image_width, app->image_height);
+	double duration = swr__time_ms() - start;
+	printf("took: %fms\n", duration);
+	//exit(0);
 	return 0;
 }
 

@@ -865,104 +865,6 @@ void swr_draw_image_ex(struct swr_output *swr, uint32_t *img_argb, int width, in
 	}
 }
 
-void swr_blur_image2(uint32_t *img, int width, int height) {
-	// float32 RGB
-	float *img_f32 = malloc(sizeof(float) * 3 * (unsigned long)width * (unsigned long)height);
-
-	// Convert img to float32 precision, with sRGB -> linear conversion
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			int index = y * width + x;
-
-			uint32_t sample = img[index];
-			float r = swr_srgb_to_linear((float)((sample >> 16) & 0xFF) / 255.0F);
-			float g = swr_srgb_to_linear((float)((sample >>  8) & 0xFF) / 255.0F);
-			float b = swr_srgb_to_linear((float)((sample >>  0) & 0xFF) / 255.0F);
-
-			int outIndex = 3 * index;
-			img_f32[outIndex+0] = r;
-			img_f32[outIndex+1] = g;
-			img_f32[outIndex+2] = b;
-		}
-	}
-
-	// Run multiple 1-dimensional lowpass filters (12dB/oct)
-	if (1) {
-		float biquad_coefficients[6];
-		float biquad_state[4];
-		memset(&biquad_coefficients, 0, 6*sizeof(float));
-		swr__lpf_coefficients(biquad_coefficients, 1000 /* Hertz */, 0.15 /* Q */);
-
-		float *ptr = img_f32;
-
-		// FIXME: Find a better way to set the initial biquad_state
-
-		// Horizontal blur pass
-		{
-			for (int chan = 0; chan < 3; chan++) {
-				for (int y = 0; y < height; y++) {
-					biquad_state[0] = ptr[3*y*width+chan];
-					biquad_state[1] = ptr[3*y*width+chan];
-					biquad_state[2] = ptr[3*y*width+chan];
-					biquad_state[3] = ptr[3*y*width+chan];
-					for (int x = 0; x < width; x++) {
-						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
-					}
-
-					biquad_state[0] = ptr[3*(y*width+width)+chan];
-					biquad_state[1] = ptr[3*(y*width+width)+chan];
-					biquad_state[2] = ptr[3*(y*width+width)+chan];
-					biquad_state[3] = ptr[3*(y*width+width)+chan];
-					for (int x = width; x >= 0; x--) {
-						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
-					}
-				}
-			}
-		}
-
-		// Vertical blur pass
-		{
-			for (int chan = 0; chan < 3; chan++) {
-				for (int x = 0; x < width; x++) {
-					biquad_state[0] = ptr[3*x+chan];
-					biquad_state[1] = ptr[3*x+chan];
-					biquad_state[2] = ptr[3*x+chan];
-					biquad_state[3] = ptr[3*x+chan];
-					for (int y = 0; y < height; y++) {
-						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
-					}
-
-					biquad_state[0] = ptr[3*(x+(height-1)*width)+chan];
-					biquad_state[1] = ptr[3*(x+(height-1)*width)+chan];
-					biquad_state[2] = ptr[3*(x+(height-1)*width)+chan];
-					biquad_state[3] = ptr[3*(x+(height-1)*width)+chan];
-					for (int y = height-1; y >= 0; y--) {
-						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
-					}
-				}
-			}
-		}
-	}
-
-	// Convert img_f32 back into img, with linear -> sRGB conversion
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			int index = y * width + x;
-			int sampleIndex = 3 * index;
-
-			float r_float = swr_linear_to_srgb(img_f32[sampleIndex + 0]);
-			float g_float = swr_linear_to_srgb(img_f32[sampleIndex + 1]);
-			float b_float = swr_linear_to_srgb(img_f32[sampleIndex + 2]);
-
-			uint8_t r = (uint8_t)(255.0 * r_float);
-			uint8_t g = (uint8_t)(255.0 * g_float);
-			uint8_t b = (uint8_t)(255.0 * b_float);
-			uint32_t color = 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
-			img[index] = color;
-		}
-	}
-}
-
 void swr_blur_image(uint32_t *img, int width, int height) {
 #ifdef SWR_DEBUG_INFO
 	double start = swr__time_ms();
@@ -1113,6 +1015,126 @@ void swr_blur_image(uint32_t *img, int width, int height) {
 #ifdef SWR_DEBUG_INFO
 	double duration = swr__time_ms() - start;
 	printf("total: %.1f ms\n", duration);
+#endif
+}
+
+void swr_blur_image2(uint32_t *img, int width, int height) {
+#ifdef SWR_DEBUG_INFO
+	double start, toLinearTime, horizontalTime, verticalTime, toSRGBTime;
+	start = swr__time_ms();
+#endif
+	// float32 RGB
+	float *img_f32 = malloc(sizeof(float) * 3 * (unsigned long)width * (unsigned long)height);
+
+	// Convert img to float32 precision, with sRGB -> linear conversion
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int index = y * width + x;
+
+			uint32_t sample = img[index];
+			float r = swr_srgb_to_linear((float)((sample >> 16) & 0xFF) / 255.0F);
+			float g = swr_srgb_to_linear((float)((sample >>  8) & 0xFF) / 255.0F);
+			float b = swr_srgb_to_linear((float)((sample >>  0) & 0xFF) / 255.0F);
+
+			int outIndex = 3 * index;
+			img_f32[outIndex+0] = r;
+			img_f32[outIndex+1] = g;
+			img_f32[outIndex+2] = b;
+		}
+	}
+
+#ifdef SWR_DEBUG_INFO
+	toLinearTime = swr__time_ms() - start;
+	start = swr__time_ms();
+#endif
+
+	// Run multiple 1-dimensional lowpass filters (12dB/oct)
+	if (1) {
+		float biquad_coefficients[6];
+		float biquad_state[4];
+		memset(&biquad_coefficients, 0, 6*sizeof(float));
+		//swr__lpf_coefficients(biquad_coefficients, 1000 /* Hertz */, 0.15 /* Q */);
+		swr__lpf_coefficients(biquad_coefficients, 4000 /* Hertz */, 0.15 /* Q */);
+
+		float *ptr = img_f32;
+
+		// FIXME: Find a better way to set the initial biquad_state
+
+		// Horizontal blur pass
+		{
+			for (int chan = 0; chan < 3; chan++) {
+				for (int y = 0; y < height; y++) {
+					biquad_state[0] = ptr[3*y*width+chan];
+					biquad_state[1] = ptr[3*y*width+chan];
+					biquad_state[2] = ptr[3*y*width+chan];
+					biquad_state[3] = ptr[3*y*width+chan];
+					for (int x = 0; x < width; x++) {
+						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
+					}
+
+					biquad_state[0] = ptr[3*(y*width+width)+chan];
+					biquad_state[1] = ptr[3*(y*width+width)+chan];
+					biquad_state[2] = ptr[3*(y*width+width)+chan];
+					biquad_state[3] = ptr[3*(y*width+width)+chan];
+					for (int x = width; x >= 0; x--) {
+						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
+					}
+				}
+			}
+#ifdef SWR_DEBUG_INFO
+	horizontalTime = swr__time_ms() - start;
+	start = swr__time_ms();
+#endif
+		}
+
+		// Vertical blur pass
+		{
+			for (int chan = 0; chan < 3; chan++) {
+				for (int x = 0; x < width; x++) {
+					biquad_state[0] = ptr[3*x+chan];
+					biquad_state[1] = ptr[3*x+chan];
+					biquad_state[2] = ptr[3*x+chan];
+					biquad_state[3] = ptr[3*x+chan];
+					for (int y = 0; y < height; y++) {
+						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
+					}
+
+					biquad_state[0] = ptr[3*(x+(height-1)*width)+chan];
+					biquad_state[1] = ptr[3*(x+(height-1)*width)+chan];
+					biquad_state[2] = ptr[3*(x+(height-1)*width)+chan];
+					biquad_state[3] = ptr[3*(x+(height-1)*width)+chan];
+					for (int y = height-1; y >= 0; y--) {
+						ptr[3*(y*width+x) + chan] = swr__do_biquad(ptr[3*(y*width+x) + chan], biquad_coefficients, biquad_state);
+					}
+				}
+			}
+#ifdef SWR_DEBUG_INFO
+	verticalTime = swr__time_ms() - start;
+	start = swr__time_ms();
+#endif
+		}
+	}
+
+	// Convert img_f32 back into img, with linear -> sRGB conversion
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int index = y * width + x;
+			int sampleIndex = 3 * index;
+
+			float r_float = swr_linear_to_srgb(img_f32[sampleIndex + 0]);
+			float g_float = swr_linear_to_srgb(img_f32[sampleIndex + 1]);
+			float b_float = swr_linear_to_srgb(img_f32[sampleIndex + 2]);
+
+			uint8_t r = (uint8_t)(255.0 * r_float);
+			uint8_t g = (uint8_t)(255.0 * g_float);
+			uint8_t b = (uint8_t)(255.0 * b_float);
+			uint32_t color = 0xFF000000 | (uint32_t)(r << 16 | g << 8 | b);
+			img[index] = color;
+		}
+	}
+#ifdef SWR_DEBUG_INFO
+	toSRGBTime = swr__time_ms() - start;
+	printf("swr_blur_image2(): toLinear: %fms, horiz: %fms, vert: %fms, toSRGB: %fms\n", toLinearTime, horizontalTime, verticalTime, toSRGBTime);
 #endif
 }
 
